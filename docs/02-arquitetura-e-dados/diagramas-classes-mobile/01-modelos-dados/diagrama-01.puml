@@ -1,0 +1,75 @@
+@startuml
+title Diagrama de Classes - Guimágua Smart Pool
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide circle
+
+class User {
+  +id: String
+  +email: String
+  +role: String
+}
+
+class Client {
+  +id: String
+  +name: String
+  +phone: String
+  +address: String
+}
+
+class Pool {
+  +id: String
+  +client_id: String
+  +dimensions: String
+  +volume: Double
+}
+
+class Appointment {
+  +id: String
+  +date: Timestamp
+  +status: String
+  +tech_id: String
+  +pool_id: String
+}
+
+class Ticket {
+  +id: String
+  +client_id: String
+  +description: String
+  +status: String
+  +priority: String
+}
+
+class Consumable {
+  +id: String
+  +name: String
+  +stock_quantity: Int
+}
+
+class Service {
+  +id: String
+  +name: String
+  +default_duration: Int
+}
+
+class PoolReading {
+  +id: String
+  +appointment_id: String
+  +ph_level: Double
+  +chlorine: Double
+  +timestamp: Timestamp
+}
+
+' Relacionamentos entre classes
+
+Client "1" -- "0..*" Pool : possui
+
+Client "1" -- "0..*" Ticket : cria
+
+Pool "1" -- "0..*" Appointment : recebe
+
+User "1" -- "0..*" Appointment : técnico responsável
+
+Appointment "1" -- "0..*" PoolReading : regista
+@enduml

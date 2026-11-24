@@ -1,0 +1,590 @@
+@startuml
+allowmixing
+left to right direction
+title Diagrama de Classes Global (Arquitetura MVVM) - Guimágua Smart Pool
+
+hide circle
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam nodesep 18
+skinparam ranksep 45
+skinparam shadowing false
+skinparam roundcorner 6
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #94A3B8
+    FontColor #0F172A
+    FontStyle bold
+}
+
+skinparam class {
+    BackgroundColor #F8FAFC
+    BorderColor #0F4C81
+    HeaderBackgroundColor #0F4C81
+    HeaderFontColor #FFFFFF
+    AttributeFontColor #1E293B
+    BackgroundColor<<Composable>> #F0FDF4
+    BorderColor<<Composable>> #15803D
+    HeaderBackgroundColor<<Composable>> #15803D
+    BackgroundColor<<UiState>> #EFF6FF
+    BorderColor<<UiState>> #2563EB
+    HeaderBackgroundColor<<UiState>> #2563EB
+    BackgroundColor<<Repository>> #F5F3FF
+    BorderColor<<Repository>> #5B21B6
+    HeaderBackgroundColor<<Repository>> #5B21B6
+    BackgroundColor<<Utility>> #FFF7ED
+    BorderColor<<Utility>> #C2410C
+    HeaderBackgroundColor<<Utility>> #C2410C
+}
+
+skinparam enum {
+    BackgroundColor #EFF6FF
+    BorderColor #3B82F6
+    HeaderBackgroundColor #3B82F6
+    HeaderFontColor #FFFFFF
+}
+
+skinparam cloud {
+    BackgroundColor #ECFEFF
+    BorderColor #0E7490
+    FontColor #164E63
+}
+
+' =========================================================
+' 1. CAMADA DE INTERFACE (JETPACK COMPOSE - LAMBDAS)
+' =========================================================
+package "1. UI Layer (Jetpack Compose)" {
+    class LoginScreen <<Composable>> {
+        + onEmailChange : (String) -> Unit
+        + onPasswordChange : (String) -> Unit
+        + onSubmitClick : () -> Unit
+        + onForgotPasswordClick : (String) -> Unit
+        + onNavigateByRole : (UserRole) -> Unit
+    }
+
+class ClientDashboardScreen <<Composable>> {
+    + onSelectPool : (String) -> Unit
+    + onRefreshClick : () -> Unit
+    + onRequestAssistanceClick : () -> Unit
+    + onOpenLatestReportClick : (String) -> Unit
+    + onLogoutClick : () -> Unit
+}
+
+class ClientTicketsAndReportsScreen <<Composable>> {
+    + onCategorySelect : (String) -> Unit
+    + onUrgencySelect : (String) -> Unit
+    + onAttachPhotoClick : (File) -> Unit
+    + onSubmitTicketClick : () -> Unit
+    + onSearchQueryChange : (String) -> Unit
+    + onYearFilterSelect : (Int?) -> Unit
+    + onDownloadPdfClick : (String) -> Unit
+}
+
+class TechDashboardScreen <<Composable>> {
+    + onSelectVisit : (Appointment) -> Unit
+    + onCheckInClick : (String) -> Unit
+    + onFilterChange : (AppointmentStatus?) -> Unit
+}
+
+class InterventionScreen <<Composable>> {
+    + onToggleTask : (String, Boolean) -> Unit
+    + onReadingsChange : (Double, Double, Double) -> Unit
+    + onAddConsumable : (Consumable, Int) -> Unit
+    + onAttachPhoto : (File) -> Unit
+    + onFinalizeClick : () -> Unit
+}
+
+class SiteSurveyScreen <<Composable>> {
+    + onToggleCheck : (String, Boolean) -> Unit
+    + onDimensionsChange : (Double, Double, Double, Double) -> Unit
+    + onAttachPhoto : (File, String) -> Unit
+    + onSubmitClick : () -> Unit
+}
+
+}
+
+' =========================================================
+' 2. CAMADA DE VIEWMODELS (LÓGICA DE NEGÓCIO)
+' =========================================================
+package "2. ViewModel Layer (MVVM)" {
+    class LoginViewModel <<ViewModel>> {
+        - authRepo : AuthRepository
+        - _uiState : MutableStateFlow<LoginUiState>
+        + uiState : StateFlow<LoginUiState>
+        --
+        + onEmailChanged(email: String) : Unit
+        + onPasswordChanged(password: String) : Unit
+        + togglePasswordVisibility() : Unit
+        + validateCredentials() : Boolean
+        + submitLogin(onRole: (UserRole) -> Unit, onDenied: (String) -> Unit) : Unit
+        + checkActiveSession(onFound: (UserRole) -> Unit) : Unit
+        + requestPasswordReset(email: String, onSent: () -> Unit) : Unit
+        + dismissErrorPopup() : Unit
+    }
+
+class ClientDashboardViewModel <<ViewModel>> {
+    - authRepo : AuthRepository
+    - firestoreRepo : FirestoreRepository
+    - _uiState : MutableStateFlow<ClientDashboardUiState>
+    + uiState : StateFlow<ClientDashboardUiState>
+    --
+    + loadClientPools() : Unit
+    + selectPool(poolId: String) : Unit
+    + loadTelemetry(poolId: String) : Unit
+    + loadNextAppointment(poolId: String) : Unit
+    + evaluateWaterQuality(reading: PoolReading) : String
+    + refreshDashboard() : Unit
+    + logout(onLoggedOut: () -> Unit) : Unit
+}
+
+class ClientTicketsViewModel <<ViewModel>> {
+    - firestoreRepo : FirestoreRepository
+    - driveRepo : DriveStorageRepository
+    - _uiState : MutableStateFlow<ClientTicketsUiState>
+    + uiState : StateFlow<ClientTicketsUiState>
+    --
+    + updateTicketField(field: String, value: String) : Unit
+    + attachCameraPhoto(file: File) : Unit
+    + removeAttachedPhoto(file: File) : Unit
+    + validateTicketForm() : Boolean
+    + createNewTicket(onOk: (String) -> Unit, onErr: (String) -> Unit) : Unit
+    + loadReportsHistory(poolId: String) : Unit
+    + filterReports(predicate: (Appointment) -> Boolean) : List<Appointment>
+    + downloadReport(fileId: String, onReady: (File) -> Unit, onErr: (String) -> Unit) : Unit
+    + dismissFeedback() : Unit
+}
+
+class TechDashboardViewModel <<ViewModel>> {
+    - authRepo : AuthRepository
+    - firestoreRepo : FirestoreRepository
+    - _uiState : MutableStateFlow<TechDashboardUiState>
+    + uiState : StateFlow<TechDashboardUiState>
+    --
+    + loadTodayRoute(date: Timestamp) : Unit
+    + filterRoute(predicate: (Appointment) -> Boolean) : List<Appointment>
+    + calculateRouteProgress() : Float
+    + startCheckIn(appointmentId: String, onOk: () -> Unit) : Unit
+    + openWorkOrder(appt: Appointment, onNav: (ServiceType) -> Unit) : Unit
+    + clearAlert() : Unit
+}
+
+class InterventionViewModel <<ViewModel>> {
+    - firestoreRepo : FirestoreRepository
+    - driveRepo : DriveStorageRepository
+    - _uiState : MutableStateFlow<InterventionUiState>
+    + uiState : StateFlow<InterventionUiState>
+    --
+    + loadIntervention(appointmentId: String) : Unit
+    + markTaskDone(taskName: String, isDone: Boolean) : Unit
+    + saveWaterReadings(ph: Double, cl: Double, temp: Double, sal: Double?) : Unit
+    + addConsumable(consumable: Consumable, qty: Int) : Unit
+    + removeConsumable(consumableId: String) : Unit
+    + attachEvidencePhoto(file: File) : Unit
+    + flagAnomalyForBudget(required: Boolean, notes: String) : Unit
+    + validateFields() : Boolean
+    + finalizeIntervention(onOk: () -> Unit, onErr: (String) -> Unit) : Unit
+}
+
+class SurveyViewModel <<ViewModel>> {
+    - firestoreRepo : FirestoreRepository
+    - driveRepo : DriveStorageRepository
+    - _uiState : MutableStateFlow<SurveyUiState>
+    + uiState : StateFlow<SurveyUiState>
+    --
+    + loadSurvey(appointmentId: String) : Unit
+    + toggleViabilityItem(item: String, isChecked: Boolean) : Unit
+    + saveMeasurements(l: Double, w: Double, dMin: Double, dMax: Double) : Unit
+    + calculateEstimatedVolume() : Double
+    + updateFieldNotes(notes: String, tags: List<String>) : Unit
+    + attachSitePhoto(file: File, category: String) : Unit
+    + removeSitePhoto(driveId: String) : Unit
+    + validateSurvey() : Boolean
+    + submitSurvey(onOk: () -> Unit, onErr: (String) -> Unit) : Unit
+}
+
+}
+
+' =========================================================
+' 2B. ESTADOS IMUTÁVEIS (UI STATES)
+' =========================================================
+package "2b. UI States (StateFlow)" {
+    class LoginUiState <<UiState>> {
+        + email : String
+        + password : String
+        + isPasswordVisible : Boolean
+        + emailError : String?
+        + passwordError : String?
+        + authErrorMessage : String?
+        + showErrorPopup : Boolean
+        + isLoading : Boolean
+        + authenticatedRole : UserRole?
+    }
+
+class ClientDashboardUiState <<UiState>> {
+    + clientName : String
+    + clientPools : List<Pool>
+    + selectedPool : Pool?
+    + liveTelemetry : PoolReading?
+    + waterQualityBadge : String
+    + hasCriticalAlert : Boolean
+    + nextAppointment : Appointment?
+    + recentReports : List<Appointment>
+    + isLoading : Boolean
+    + toastMessage : String?
+}
+
+class ClientTicketsUiState <<UiState>> {
+    + selectedPoolId : String
+    + ticketCategory : String
+    + urgencyLevel : String
+    + description : String
+    + preferredTimeSlot : String
+    + localPhotos : List<File>
+    + uploadedPhotoDriveIds : List<String>
+    + uploadProgress : Int
+    + reportsHistory : List<Appointment>
+    + searchQuery : String
+    + selectedYear : Int?
+    + validationErrors : Map<String, String>
+    + isSubmitting : Boolean
+    + isDownloadingPdf : Boolean
+    + showSuccessPopup : Boolean
+    + toastMessage : String?
+}
+
+class TechDashboardUiState <<UiState>> {
+    + activeRole : UserRole
+    + todayAppointments : List<Appointment>
+    + activeFilter : AppointmentStatus?
+    + completedCount : Int
+    + isOfflineMode : Boolean
+    + isLoading : Boolean
+    + alertMessage : String?
+}
+
+class InterventionUiState <<UiState>> {
+    + appointment : Appointment?
+    + checklist : Map<String, Boolean>
+    + phLevel : String
+    + chlorinePpm : String
+    + temperatureC : String
+    + salinityGl : String
+    + usedConsumables : List<ConsumableUsage>
+    + availableStock : List<Consumable>
+    + photoDriveIds : List<String>
+    + anomalyReported : Boolean
+    + anomalyNotes : String
+    + uploadProgress : Int
+    + validationErrors : Map<String, String>
+    + isSubmitting : Boolean
+    + toastMessage : String?
+}
+
+class SurveyUiState <<UiState>> {
+    + appointment : Appointment?
+    + viabilityChecklist : Map<String, Boolean>
+    + lengthM : String
+    + widthM : String
+    + shallowDepthM : String
+    + deepDepthM : String
+    + estimatedVolumeM3 : Double
+    + fieldNotes : String
+    + projectTags : List<String>
+    + photoDriveIds : List<String>
+    + uploadProgress : Int
+    + validationErrors : Map<String, String>
+    + isSubmitting : Boolean
+    + toastMessage : String?
+}
+
+}
+
+' =========================================================
+' 3. CAMADA DE REPOSITÓRIOS (DATA LAYER)
+' =========================================================
+package "3. Repository Layer (Comunicação Externa)" {
+    class AuthRepository <<Repository>> {
+        - auth : FirebaseAuth
+        - messaging : FirebaseMessaging
+        - db : FirebaseFirestore
+        .. Leitura ..
+        + getCurrentUserId() : String?
+        + isUserLoggedIn() : Boolean
+        + suspend getCurrentUserRole() : Result<UserRole>
+        + suspend getCurrentUserProfile() : Result<User>
+        .. Escrita ..
+        + suspend loginUser(email: String, pass: String) : Result<User>
+        + suspend sendPasswordReset(email: String) : Result<Unit>
+        + suspend syncFcmToken(userId: String) : Result<Unit>
+        + logout() : Unit
+    }
+
+class FirestoreRepository <<Repository>> {
+    - db : FirebaseFirestore
+    .. Leitura & Tempo Real ..
+    + suspend getClientByUserId(userId: String) : Result<Client>
+    + suspend getClientPools(clientId: String) : Result<List<Pool>>
+    + observePoolTelemetry(poolId: String) : Flow<PoolReading?>
+    + suspend getNextAppointment(poolId: String) : Result<Appointment?>
+    + suspend getDailyAppointments(techId: String, date: Timestamp) : Result<List<Appointment>>
+    + suspend getAppointmentById(id: String) : Result<Appointment>
+    + suspend getClientReports(poolId: String) : Result<List<Appointment>>
+    + suspend getConsumables() : Result<List<Consumable>>
+    + suspend getServiceCatalog() : Result<List<Service>>
+    .. Escrita & WriteBatch ..
+    + suspend registerCheckIn(id: String, ts: Timestamp) : Result<Unit>
+    + suspend updateAppointmentStatus(id: String, st: AppointmentStatus) : Result<Unit>
+    + suspend closeInterventionBatch(appt: Appointment, rd: PoolReading?, cons: List<ConsumableUsage>) : Result<Unit>
+    + suspend saveCommercialSurvey(appt: Appointment) : Result<Unit>
+    + suspend reportAnomaly(id: String, notes: String) : Result<Unit>
+    + suspend submitTicket(ticket: Ticket) : Result<String>
+}
+
+class DriveStorageRepository <<Repository>> {
+    - driveService : DriveApi
+    - credentials : ServiceAccountCredentials
+    - compressor : ImageCompressor
+    .. Leitura ..
+    + suspend getReportPdfLink(fileId: String) : Result<String>
+    + suspend downloadReportPdf(fileId: String, dest: File) : Result<File>
+    .. Escrita ..
+    + suspend uploadPhotoToDrive(file: File, folderId: String, onProg: (Int) -> Unit) : Result<String>
+    + suspend uploadMultiplePhotos(files: List<File>, folderId: String) : Result<List<String>>
+    - suspend getValidAccessToken() : String
+}
+
+class ImageCompressor <<Utility>> {
+    - maxSizeBytes : Long = 1572864
+    --
+    + suspend compressImage(rawFile: File) : File
+    + isWithinSizeLimit(file: File) : Boolean
+}
+
+}
+
+' =========================================================
+' 4. CAMADA DE DOMÍNIO (8 COLEÇÕES FIRESTORE + ENUMS)
+' =========================================================
+package "4. Domain Layer (Firestore)" {
+    class User <<Collection: users>> {
+        + id : String
+        + email : String
+        + name : String
+        + role : UserRole
+        + specialties : List<String>
+        + fcm_token : String?
+        + is_active : Boolean
+        --
+        + hasRole(target: UserRole) : Boolean
+        + canPerformService(skill: String) : Boolean
+    }
+
+class Client <<Collection: clients>> {
+    + id : String
+    + user_id : String
+    + name : String
+    + email : String
+    + phone : String
+    + address : String
+    + is_active : Boolean
+    --
+    + hasValidContact() : Boolean
+}
+
+class Pool <<Collection: pools>> {
+    + id : String
+    + client_id : String
+    + local_address : String
+    + dimensions : String
+    + volume_m3 : Double
+    + treatment_type : String
+    + equipment : List<String>
+    --
+    + hasInstalledEquipment(name: String) : Boolean
+}
+
+class Ticket <<Collection: tickets>> {
+    + id : String
+    + client_id : String
+    + pool_id : String
+    + category : String
+    + description : String
+    + status : TicketStatus
+    + priority : String
+    + photo_drive_ids : List<String>
+    + created_at : Timestamp
+    --
+    + isUrgent() : Boolean
+    + canBeEdited() : Boolean
+}
+
+class Service <<Collection: services>> {
+    + id : String
+    + name : String
+    + type : ServiceType
+    + default_duration_min : Int
+    + checklist_template : List<String>
+    + is_active : Boolean
+    --
+    + isCommercialSurvey() : Boolean
+}
+
+class Consumable <<Collection: consumables>> {
+    + id : String
+    + name : String
+    + unit : String
+    + stock_quantity : Int
+    + projected_stock : Int
+    + is_active : Boolean
+    --
+    + hasSufficientStock(qty: Int) : Boolean
+    + isBelowThreshold(min: Int) : Boolean
+}
+
+class Appointment <<Collection: appointments>> {
+    + id : String
+    + pool_id : String
+    + tech_id : String
+    + service_id : String
+    + date : Timestamp
+    + checkin_timestamp : Timestamp?
+    + status : AppointmentStatus
+    + checklist_results : Map<String, Boolean>
+    + notes : String
+    + anomaly_reported : Boolean
+    + photo_drive_ids : List<String>
+    + report_pdf_drive_link : String?
+    --
+    + canCheckIn() : Boolean
+    + isChecklistComplete() : Boolean
+    + requiresBudgetAlert() : Boolean
+}
+
+class PoolReading <<Collection: pool_readings>> {
+    + id : String
+    + appointment_id : String
+    + pool_id : String
+    + ph_level : Double
+    + chlorine_ppm : Double
+    + temperature_c : Double
+    + salinity_gl : Double?
+    + timestamp : Timestamp
+    --
+    + isWaterBalanced(minPh: Double, maxPh: Double) : Boolean
+}
+
+class ConsumableUsage <<Embedded>> {
+    + consumable_id : String
+    + quantity_used : Int
+}
+
+}
+
+package "Enums" {
+    enum UserRole {
+        ADMIN
+        CLIENT
+        TECHNICIAN
+        COMMERCIAL
+    }
+
+enum ServiceType {
+    MAINTENANCE
+    REPAIR
+    COMMERCIAL_SURVEY
+}
+
+enum AppointmentStatus {
+    SCHEDULED
+    IN_PROGRESS
+    COMPLETED
+    CANCELLED
+}
+
+enum TicketStatus {
+    PENDING
+    IN_ANALYSIS
+    RESPONDED
+}
+
+}
+
+' =========================================================
+' 5. SERVIÇOS EXTERNOS (CLOUD / BACKEND)
+' =========================================================
+package "5. External Services (Cloud)" {
+    cloud "Firebase Auth\n(Custom Claims RBAC)" as FirebaseAuthSvc
+    cloud "Firebase Cloud Messaging\n(Push Notifications)" as FcmSvc
+    cloud "Cloud Firestore\n(NoSQL + Offline Cache)" as FirestoreSvc
+    cloud "Google Drive API\n(Service Account GCP)" as DriveSvc
+}
+
+' =========================================================
+' RELACIONAMENTOS ENTRE CAMADAS
+' =========================================================
+' UI -> ViewModels
+LoginScreen ..> LoginViewModel
+ClientDashboardScreen ..> ClientDashboardViewModel
+ClientTicketsAndReportsScreen ..> ClientTicketsViewModel
+TechDashboardScreen ..> TechDashboardViewModel
+InterventionScreen ..> InterventionViewModel
+SiteSurveyScreen ..> SurveyViewModel
+
+' ViewModels -> UiStates
+LoginViewModel *--> LoginUiState
+ClientDashboardViewModel *--> ClientDashboardUiState
+ClientTicketsViewModel *--> ClientTicketsUiState
+TechDashboardViewModel *--> TechDashboardUiState
+InterventionViewModel *--> InterventionUiState
+SurveyViewModel *--> SurveyUiState
+
+' ViewModels -> Repositories
+LoginViewModel --> AuthRepository
+ClientDashboardViewModel --> AuthRepository
+ClientDashboardViewModel --> FirestoreRepository
+ClientTicketsViewModel --> FirestoreRepository
+ClientTicketsViewModel --> DriveStorageRepository
+TechDashboardViewModel --> AuthRepository
+TechDashboardViewModel --> FirestoreRepository
+InterventionViewModel --> FirestoreRepository
+InterventionViewModel --> DriveStorageRepository
+SurveyViewModel --> FirestoreRepository
+SurveyViewModel --> DriveStorageRepository
+
+' Repositories -> Utility & Cloud
+DriveStorageRepository *--> ImageCompressor
+AuthRepository --> FirebaseAuthSvc
+AuthRepository --> FcmSvc
+AuthRepository ..> FirestoreSvc
+FirestoreRepository --> FirestoreSvc
+DriveStorageRepository --> DriveSvc
+
+' Repositories -> Domain Models
+AuthRepository ..> User
+FirestoreRepository ..> Client
+FirestoreRepository ..> Pool
+FirestoreRepository ..> Appointment
+FirestoreRepository ..> Ticket
+FirestoreRepository ..> PoolReading
+FirestoreRepository ..> Consumable
+FirestoreRepository ..> Service
+
+' Domínio Interno
+User "1" -- "0..1" Client : autentica
+User "1" -- "0..*" Appointment : executa
+Client "1" -- "0..*" Pool : possui
+Client "1" -- "0..*" Ticket : submete
+Pool "1" -- "0..*" Ticket : refere-se a
+Pool "1" -- "0..*" Appointment : recebe
+Service "1" -- "0..*" Appointment : define tipo
+Service "0..*" -- "0..*" Consumable : prevê base
+Appointment "1" -- "0..*" PoolReading : regista
+Appointment "1" -- "0..*" ConsumableUsage : abate
+Consumable "1" -- "0..*" ConsumableUsage : referencia
+
+User ..> UserRole
+Service ..> ServiceType
+Appointment ..> AppointmentStatus
+Ticket ..> TicketStatus
+@enduml

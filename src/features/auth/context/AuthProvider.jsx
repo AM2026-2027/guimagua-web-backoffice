@@ -34,7 +34,7 @@ export default function AuthProvider({ children }) {
           setUser(null)
           setProfile(null)
         } else {
-          // Sem perfil: mantém sessão com role nula; o RBAC encaminha para /acesso-negado.
+          // Sem perfil: mantém sessão com role nula; o RBAC encaminha para /sem-acesso.
           setUser(firebaseUser)
           setProfile(userProfile)
         }
