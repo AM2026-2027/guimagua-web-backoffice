@@ -1,0 +1,240 @@
+@startuml
+title Diagrama de Classes (ViewModels - App Técnico e Comercial) - Guimágua Smart Pool
+
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam nodesep 55
+skinparam ranksep 60
+skinparam shadowing false
+skinparam roundcorner 8
+
+skinparam class {
+    BackgroundColor #F8FAFC
+    BorderColor #0F4C81
+    HeaderBackgroundColor #0F4C81
+    HeaderFontColor #FFFFFF
+    AttributeFontColor #1E293B
+}
+
+skinparam class<<UiState>> {
+    BackgroundColor #EFF6FF
+    BorderColor #2563EB
+    HeaderBackgroundColor #2563EB
+    HeaderFontColor #FFFFFF
+}
+
+skinparam class<<Composable>> {
+    BackgroundColor #F0FDF4
+    BorderColor #15803D
+    HeaderBackgroundColor #15803D
+    HeaderFontColor #FFFFFF
+}
+
+skinparam class<<Repository>> {
+    BackgroundColor #F1F5F9
+    BorderColor #475569
+    HeaderBackgroundColor #475569
+    HeaderFontColor #FFFFFF
+}
+
+skinparam note {
+    BackgroundColor #FEFCE8
+    BorderColor #CA8A04
+    FontColor #713F12
+}
+
+' ==========================================
+' CAMADA DE INTERFACE (JETPACK COMPOSE)
+' ==========================================
+package "UI Layer (Jetpack Compose)" {
+    class TechDashboardScreen <<Composable>> {
+        + onSelectVisit : (Appointment) -> Unit
+        + onCheckInClick : (String) -> Unit
+        + onFilterChange : (AppointmentStatus?) -> Unit
+    }
+
+class InterventionScreen <<Composable>> {
+    + onToggleTask : (String, Boolean) -> Unit
+    + onReadingsChange : (Double, Double, Double) -> Unit
+    + onAddConsumable : (Consumable, Int) -> Unit
+    + onAttachPhoto : (File) -> Unit
+    + onFinalizeClick : () -> Unit
+}
+
+class SiteSurveyScreen <<Composable>> {
+    + onToggleCheck : (String, Boolean) -> Unit
+    + onDimensionsChange : (Double, Double, Double, Double) -> Unit
+    + onAttachPhoto : (File, String) -> Unit
+    + onSubmitClick : () -> Unit
+}
+
+}
+
+' ==========================================
+' ESTADOS IMUTÁVEIS (UNIDIRECTIONAL DATA FLOW)
+' ==========================================
+package "UI States (Data Classes Imutáveis)" {
+    class TechDashboardUiState <<UiState>> {
+        + activeRole : UserRole
+        + todayAppointments : List<Appointment>
+        + activeFilter : AppointmentStatus?
+        + completedCount : Int
+        + isOfflineMode : Boolean
+        + isLoading : Boolean
+        + alertMessage : String?
+    }
+
+class InterventionUiState <<UiState>> {
+    + appointment : Appointment?
+    + checklist : Map<String, Boolean>
+    + phLevel : String
+    + chlorinePpm : String
+    + temperatureC : String
+    + salinityGl : String
+    + usedConsumables : List<ConsumableUsage>
+    + availableStock : List<Consumable>
+    + photoDriveIds : List<String>
+    + anomalyReported : Boolean
+    + anomalyNotes : String
+    + uploadProgress : Int
+    + validationErrors : Map<String, String>
+    + isSubmitting : Boolean
+    + toastMessage : String?
+}
+
+class SurveyUiState <<UiState>> {
+    + appointment : Appointment?
+    + viabilityChecklist : Map<String, Boolean>
+    + lengthM : String
+    + widthM : String
+    + shallowDepthM : String
+    + deepDepthM : String
+    + estimatedVolumeM3 : Double
+    + fieldNotes : String
+    + projectTags : List<String>
+    + photoDriveIds : List<String>
+    + uploadProgress : Int
+    + validationErrors : Map<String, String>
+    + isSubmitting : Boolean
+    + toastMessage : String?
+}
+
+}
+
+' ==========================================
+' CAMADA DE VIEWMODELS (LÓGICA DE NEGÓCIO)
+' ==========================================
+package "ViewModel Layer (AndroidX ViewModel)" {
+    class TechDashboardViewModel <<ViewModel>> {
+        - authRepo : AuthRepository
+        - firestoreRepo : FirestoreRepository
+        - _uiState : MutableStateFlow<TechDashboardUiState>
+        + uiState : StateFlow<TechDashboardUiState>
+        .. Rotas & Filtros Funcionais ..
+        + loadTodayRoute(date: Timestamp) : Unit
+        + filterRoute(predicate: (Appointment) -> Boolean) : List<Appointment>
+        + calculateRouteProgress() : Float
+        .. Operações & Navegação (Lambdas) ..
+        + startCheckIn(appointmentId: String, onSuccess: () -> Unit) : Unit
+        + openWorkOrder(appointment: Appointment, onNavigate: (ServiceType) -> Unit) : Unit
+        + clearAlert() : Unit
+    }
+
+class InterventionViewModel <<ViewModel>> {
+    - firestoreRepo : FirestoreRepository
+    - driveRepo : DriveStorageRepository
+    - _uiState : MutableStateFlow<InterventionUiState>
+    + uiState : StateFlow<InterventionUiState>
+    .. Execução & Leituras (RF-TEC02) ..
+    + loadIntervention(appointmentId: String) : Unit
+    + markTaskDone(taskName: String, isDone: Boolean) : Unit
+    + saveWaterReadings(ph: Double, chlorine: Double, temp: Double, salinity: Double?) : Unit
+    + addConsumable(consumable: Consumable, qty: Int) : Unit
+    + removeConsumable(consumableId: String) : Unit
+    .. Evidências & Anomalias (RF-TEC03 / RF-TEC04) ..
+    + attachEvidencePhoto(file: File) : Unit
+    + flagAnomalyForBudget(isRequired: Boolean, diagnosticNotes: String) : Unit
+    .. Validação & Fecho Atómico ..
+    + validateFields() : Boolean
+    + finalizeIntervention(onSuccess: () -> Unit, onError: (String) -> Unit) : Unit
+}
+
+class SurveyViewModel <<ViewModel>> {
+    - firestoreRepo : FirestoreRepository
+    - driveRepo : DriveStorageRepository
+    - _uiState : MutableStateFlow<SurveyUiState>
+    + uiState : StateFlow<SurveyUiState>
+    .. Levantamento Estrutural (RF-COM02) ..
+    + loadSurvey(appointmentId: String) : Unit
+    + toggleViabilityItem(item: String, isChecked: Boolean) : Unit
+    + saveMeasurements(length: Double, width: Double, shallowDepth: Double, deepDepth: Double) : Unit
+    + calculateEstimatedVolume() : Double
+    .. Multimédia & Notas (RF-COM03 / RNF-COM01) ..
+    + updateFieldNotes(notes: String, tags: List<String>) : Unit
+    + attachSitePhoto(file: File, category: String) : Unit
+    + removeSitePhoto(driveId: String) : Unit
+    .. Validação & Submissão ..
+    + validateSurvey() : Boolean
+    + submitSurvey(onSuccess: () -> Unit, onError: (String) -> Unit) : Unit
+}
+
+}
+
+' ==========================================
+' DEPENDÊNCIAS DE REPOSITÓRIOS (DIAGRAMA 2)
+' ==========================================
+package "Data Layer (Ref. Diagrama 2)" {
+    class AuthRepository <<Repository>>
+    class FirestoreRepository <<Repository>>
+    class DriveStorageRepository <<Repository>>
+}
+
+' ==========================================
+' RELACIONAMENTOS
+' ==========================================
+' UI observa StateFlow e dispara eventos via Lambdas
+TechDashboardScreen ..> TechDashboardViewModel : observa uiState / chama ações
+InterventionScreen ..> InterventionViewModel : observa uiState / chama ações
+SiteSurveyScreen ..> SurveyViewModel : observa uiState / chama ações
+
+' ViewModels gerem os respetivos UiStates imutáveis
+TechDashboardViewModel *-- TechDashboardUiState : expõe via StateFlow
+InterventionViewModel *-- InterventionUiState : expõe via StateFlow
+SurveyViewModel *-- SurveyUiState : expõe via StateFlow
+
+' ViewModels consomem Repositórios
+TechDashboardViewModel --> AuthRepository : valida role / techId
+TechDashboardViewModel --> FirestoreRepository : lê rota / regista check-in
+
+InterventionViewModel --> FirestoreRepository : lê stock / executa WriteBatch
+InterventionViewModel --> DriveStorageRepository : envia evidências fotográficas
+
+SurveyViewModel --> FirestoreRepository : grava vistoria / notas
+SurveyViewModel --> DriveStorageRepository : comprime (<1.5MB) e envia fotos
+
+' ==========================================
+' NOTAS ARQUITETÓNICAS
+' ==========================================
+note bottom of TechDashboardViewModel
+  **Base de Código Partilhada:**
+  openWorkOrder() lê o ServiceType:
+
+- MAINTENANCE / REPAIR -> InterventionScreen
+- COMMERCIAL_SURVEY -> SiteSurveyScreen
+  (oculta campos químicos na vistoria).
+  end note
+
+note bottom of InterventionViewModel
+  **RNF-GLB03 & RNF-TEC02:**
+  Os campos ficam guardados no UiState;
+  em caso de erro, o formulário não é limpo.
+  finalizeIntervention() invoca closeInterventionBatch().
+end note
+
+note bottom of SurveyViewModel
+  **RNF-COM01:**
+  attachSitePhoto() passa a lambda de progresso
+  ao DriveStorageRepository, que comprime
+  cada imagem localmente (< 1.5 MB).
+end note
+@enduml

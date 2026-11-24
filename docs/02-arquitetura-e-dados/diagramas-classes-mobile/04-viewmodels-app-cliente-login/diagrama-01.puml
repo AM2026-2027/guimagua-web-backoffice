@@ -1,0 +1,241 @@
+@startuml
+title Diagrama de Classes (ViewModels - Login e App Cliente) - Guimágua Smart Pool
+
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam nodesep 55
+skinparam ranksep 60
+skinparam shadowing false
+skinparam roundcorner 8
+
+skinparam class {
+    BackgroundColor #F8FAFC
+    BorderColor #0F4C81
+    HeaderBackgroundColor #0F4C81
+    HeaderFontColor #FFFFFF
+    AttributeFontColor #1E293B
+}
+
+skinparam class<<UiState>> {
+    BackgroundColor #EFF6FF
+    BorderColor #2563EB
+    HeaderBackgroundColor #2563EB
+    HeaderFontColor #FFFFFF
+}
+
+skinparam class<<Composable>> {
+    BackgroundColor #F0FDF4
+    BorderColor #15803D
+    HeaderBackgroundColor #15803D
+    HeaderFontColor #FFFFFF
+}
+
+skinparam class<<Repository>> {
+    BackgroundColor #F1F5F9
+    BorderColor #475569
+    HeaderBackgroundColor #475569
+    HeaderFontColor #FFFFFF
+}
+
+skinparam note {
+    BackgroundColor #FEFCE8
+    BorderColor #CA8A04
+    FontColor #713F12
+}
+
+' ==========================================
+' CAMADA DE INTERFACE (JETPACK COMPOSE)
+' ==========================================
+package "UI Layer (Jetpack Compose)" {
+    class LoginScreen <<Composable>> {
+        + onEmailChange : (String) -> Unit
+        + onPasswordChange : (String) -> Unit
+        + onSubmitClick : () -> Unit
+        + onForgotPasswordClick : (String) -> Unit
+        + onNavigateByRole : (UserRole) -> Unit
+    }
+
+class ClientDashboardScreen <<Composable>> {
+    + onSelectPool : (String) -> Unit
+    + onRefreshClick : () -> Unit
+    + onRequestAssistanceClick : () -> Unit
+    + onOpenLatestReportClick : (String) -> Unit
+    + onLogoutClick : () -> Unit
+}
+
+class ClientTicketsAndReportsScreen <<Composable>> {
+    + onCategorySelect : (String) -> Unit
+    + onUrgencySelect : (String) -> Unit
+    + onAttachPhotoClick : (File) -> Unit
+    + onSubmitTicketClick : () -> Unit
+    + onSearchQueryChange : (String) -> Unit
+    + onYearFilterSelect : (Int?) -> Unit
+    + onDownloadPdfClick : (String) -> Unit
+}
+
+}
+
+' ==========================================
+' ESTADOS IMUTÁVEIS (UNIDIRECTIONAL DATA FLOW)
+' ==========================================
+package "UI States (Data Classes Imutáveis)" {
+    class LoginUiState <<UiState>> {
+        + email : String
+        + password : String
+        + isPasswordVisible : Boolean
+        + emailError : String?
+        + passwordError : String?
+        + authErrorMessage : String?
+        + showErrorPopup : Boolean
+        + isLoading : Boolean
+        + authenticatedRole : UserRole?
+    }
+
+class ClientDashboardUiState <<UiState>> {
+    + clientName : String
+    + clientPools : List<Pool>
+    + selectedPool : Pool?
+    + liveTelemetry : PoolReading?
+    + waterQualityBadge : String
+    + hasCriticalAlert : Boolean
+    + nextAppointment : Appointment?
+    + recentReports : List<Appointment>
+    + isLoading : Boolean
+    + toastMessage : String?
+}
+
+class ClientTicketsUiState <<UiState>> {
+    + selectedPoolId : String
+    + ticketCategory : String
+    + urgencyLevel : String
+    + description : String
+    + preferredTimeSlot : String
+    + localPhotos : List<File>
+    + uploadedPhotoDriveIds : List<String>
+    + uploadProgress : Int
+    + reportsHistory : List<Appointment>
+    + searchQuery : String
+    + selectedYear : Int?
+    + validationErrors : Map<String, String>
+    + isSubmitting : Boolean
+    + isDownloadingPdf : Boolean
+    + showSuccessPopup : Boolean
+    + toastMessage : String?
+}
+
+}
+
+' ==========================================
+' CAMADA DE VIEWMODELS (LÓGICA DE NEGÓCIO)
+' ==========================================
+package "ViewModel Layer (AndroidX ViewModel)" {
+    class LoginViewModel <<ViewModel>> {
+        - authRepo : AuthRepository
+        - _uiState : MutableStateFlow<LoginUiState>
+        + uiState : StateFlow<LoginUiState>
+        .. Gestão de Inputs & Validação ..
+        + onEmailChanged(email: String) : Unit
+        + onPasswordChanged(password: String) : Unit
+        + togglePasswordVisibility() : Unit
+        + validateCredentials() : Boolean
+        .. Autenticação, RBAC & Alertas ..
+        + submitLogin(onRoleResolved: (UserRole) -> Unit, onAccessDenied: (String) -> Unit) : Unit
+        + checkActiveSession(onSessionFound: (UserRole) -> Unit) : Unit
+        + requestPasswordReset(email: String, onSent: () -> Unit) : Unit
+        + dismissErrorPopup() : Unit
+    }
+
+class ClientDashboardViewModel <<ViewModel>> {
+    - authRepo : AuthRepository
+    - firestoreRepo : FirestoreRepository
+    - _uiState : MutableStateFlow<ClientDashboardUiState>
+    + uiState : StateFlow<ClientDashboardUiState>
+    .. Gestão Multi-Piscina & Telemetria (RF-CLI01) ..
+    + loadClientPools() : Unit
+    + selectPool(poolId: String) : Unit
+    + loadTelemetry(poolId: String) : Unit
+    + loadNextAppointment(poolId: String) : Unit
+    + evaluateWaterQuality(reading: PoolReading) : String
+    .. Sessão & Atualização ..
+    + refreshDashboard() : Unit
+    + logout(onLoggedOut: () -> Unit) : Unit
+}
+
+class ClientTicketsViewModel <<ViewModel>> {
+    - firestoreRepo : FirestoreRepository
+    - driveRepo : DriveStorageRepository
+    - _uiState : MutableStateFlow<ClientTicketsUiState>
+    + uiState : StateFlow<ClientTicketsUiState>
+    .. Novo Pedido & Evidências (RF-CLI02) ..
+    + updateTicketField(field: String, value: String) : Unit
+    + attachCameraPhoto(file: File) : Unit
+    + removeAttachedPhoto(file: File) : Unit
+    + validateTicketForm() : Boolean
+    + createNewTicket(onSuccess: (String) -> Unit, onError: (String) -> Unit) : Unit
+    .. Arquivo & Download de Relatórios (RF-CLI03) ..
+    + loadReportsHistory(poolId: String) : Unit
+    + filterReports(predicate: (Appointment) -> Boolean) : List<Appointment>
+    + downloadReport(fileId: String, onPdfReady: (File) -> Unit, onError: (String) -> Unit) : Unit
+    + dismissFeedback() : Unit
+}
+
+}
+
+' ==========================================
+' DEPENDÊNCIAS DE REPOSITÓRIOS (DIAGRAMA 2)
+' ==========================================
+package "Data Layer (Ref. Diagrama 2)" {
+    class AuthRepository <<Repository>>
+    class FirestoreRepository <<Repository>>
+    class DriveStorageRepository <<Repository>>
+}
+
+' ==========================================
+' RELACIONAMENTOS
+' ==========================================
+' UI observa StateFlow e dispara eventos via Lambdas
+LoginScreen ..> LoginViewModel : observa uiState / dispara lambdas
+ClientDashboardScreen ..> ClientDashboardViewModel : observa uiState / dispara lambdas
+ClientTicketsAndReportsScreen ..> ClientTicketsViewModel : observa uiState / dispara lambdas
+
+' ViewModels gerem os respetivos UiStates imutáveis
+LoginViewModel *-- LoginUiState : expõe via StateFlow
+ClientDashboardViewModel *-- ClientDashboardUiState : expõe via StateFlow
+ClientTicketsViewModel *-- ClientTicketsUiState : expõe via StateFlow
+
+' ViewModels consomem Repositórios
+LoginViewModel --> AuthRepository : autentica / lê Custom Claims / FCM
+
+ClientDashboardViewModel --> AuthRepository : obtém clientId / logout
+ClientDashboardViewModel --> FirestoreRepository : observa Flow telemetria / lê piscinas
+
+ClientTicketsViewModel --> FirestoreRepository : submete ticket / lê histórico
+ClientTicketsViewModel --> DriveStorageRepository : envia fotos / descarrega PDF
+
+' ==========================================
+' NOTAS ARQUITETÓNICAS
+' ==========================================
+note bottom of LoginViewModel
+  **RNF-GLB01 (RBAC) & Testes de Acesso:**
+  submitLogin() valida campos, autentica no Firebase Auth,
+  sincroniza fcm_token e lê Custom Claims:
+
+- CLIENT -> ClientDashboardScreen
+- TECHNICIAN / COMMERCIAL -> TechDashboardScreen
+- Conta inativa/ADMIN na App -> Popup "Acesso Negado".
+  end note
+
+note bottom of ClientDashboardViewModel
+  **RF-CLI01 & RF-GLB01:**
+  loadTelemetry() subscreve Flow em tempo real
+  do Firestore e alterna dinamicamente quando
+  o cliente muda de piscina via selectPool().
+end note
+
+note bottom of ClientTicketsViewModel
+  **RNF-GLB03, RNF-GLB04 & RNF-CLI01:**
+  Dados mantidos no UiState em caso de erro.
+  Fotos e PDFs transferidos via Google Drive API
+  (Service Account) sob HTTPS/TLS 1.3 (RGPD).
+end note
+@enduml
