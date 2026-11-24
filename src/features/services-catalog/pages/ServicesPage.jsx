@@ -1,46 +1,42 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import ErrorAlert from '../../../shared/components/ErrorAlert'
 import LoadingSpinner from '../../../shared/components/LoadingSpinner'
 import ServiceFormModal from '../components/ServiceFormModal'
 import ServicesTable from '../components/ServicesTable'
+import StockAlertsCard from '../components/StockAlertsCard'
+import { StockLegend } from '../components/StockDot'
+import useConsumables from '../hooks/useConsumables'
 import useServicesCatalog from '../hooks/useServicesCatalog'
-import { SERVICE_CATEGORIES } from '../utils/serviceForm'
+import { buildCatalogCsv } from '../utils/catalogCsv'
+import { formatPrice, hasValidPrice } from '../utils/format'
+import { SERVICE_TYPES } from '../utils/labels'
+import { STOCK_LEVEL, STOCK_LEVEL_LABELS, serviceStockLevel } from '../utils/stock'
 
 const PAGE_SIZE = 7
 
-function MetricCard({ label, value, badge, footnote, icon, accent = 'bg-blue-50 text-primary', tone = 'bg-sky-50' }) {
+function MetricCard({ label, value, badge, footnote, icon, accent = 'bg-sky-100 text-primary' }) {
   return (
-    <article className="relative min-h-[108px] overflow-hidden rounded-lg border border-slate-100 bg-white p-3 shadow-sm sm:p-4">
-      <div className={`absolute bottom-0 right-0 h-16 w-16 rounded-tl-2xl ${tone}`} aria-hidden="true" />
-      <div className="relative z-10 flex items-start justify-between gap-2"><p className="pt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md ${accent}`} aria-hidden="true">{icon}</span></div>
-      <div className="relative z-10 mt-1 flex flex-wrap items-center gap-1.5"><p className="text-2xl font-bold tracking-tight text-slate-900">{value}</p>{badge && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800">{badge}</span>}</div>
-      <div className="relative z-10 mt-1 flex items-start gap-1.5 text-xs leading-snug text-slate-600"><span className="mt-0.5 shrink-0 text-slate-400" aria-hidden="true">{footnote.icon}</span><span>{footnote.text}</span></div>
+    <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-600">{label}</p>
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-md ${accent}`} aria-hidden="true">{icon}</span>
+      </div>
+      <div className="mt-1 flex flex-wrap items-center gap-2">
+        <p className="text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+        {badge && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-900">{badge}</span>}
+      </div>
+      <p className="mt-1 text-xs leading-snug text-slate-600">{footnote}</p>
     </article>
   )
 }
 
-function MetricIcon({ children, color = 'currentColor' }) {
-  return <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">{children}</svg>
+function MetricIcon({ children }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">{children}</svg>
 }
 
-function exportCatalog(services) {
-  const columns = ['Código', 'Serviço', 'Descrição', 'Categoria', 'Duração (minutos)', 'Químicos / peças', 'Preço base (€)', 'IVA incluído', 'Estado', 'Elegível para IoT']
-  const rows = services.map((service) => [
-    service.code,
-    service.name,
-    service.description,
-    SERVICE_CATEGORIES.find(({ value }) => value === service.category)?.label ?? service.category,
-    service.estimated_duration_minutes,
-    service.included_items,
-    service.base_price,
-    service.vat_included ? 'Sim' : 'Não',
-    service.is_active === false ? 'Inativo' : 'Ativo',
-    service.is_iot_enabled ? 'Sim' : 'Não',
-  ])
-  const csv = [columns, ...rows]
-    .map((row) => row.map((value) => `"${String(value ?? '').replaceAll('"', '""')}"`).join(';'))
-    .join('\r\n')
-  const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }))
+// Descarrega o CSV no browser (o conteúdo é gerado em utils/catalogCsv.js).
+function downloadCatalog(services) {
+  const url = URL.createObjectURL(new Blob([buildCatalogCsv(services)], { type: 'text/csv;charset=utf-8' }))
   const link = document.createElement('a')
   link.href = url
   link.download = 'catalogo-servicos.csv'
@@ -48,50 +44,73 @@ function exportCatalog(services) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+function compareServices(sortOrder) {
+  return (first, second) => {
+    if (sortOrder === 'price-asc') return (Number(first.base_price) || 0) - (Number(second.base_price) || 0)
+    if (sortOrder === 'price-desc') return (Number(second.base_price) || 0) - (Number(first.base_price) || 0)
+    return String(first.name ?? '').localeCompare(String(second.name ?? ''), 'pt-PT')
+  }
+}
+
+const filterSelectClass = 'min-w-0 flex-1 bg-transparent py-2 text-sm font-medium text-primary outline-none'
+const filterLabelClass = 'flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 text-xs text-slate-600 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20'
+
 export default function ServicesPage() {
-  const { services, loading, error, setError, saveService, setServiceActive } = useServicesCatalog()
+  const { services, loading, error, clearError, reload, pendingIds, saveService, toggleServiceActive } = useServicesCatalog()
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('all')
+  const [type, setType] = useState('all')
   const [status, setStatus] = useState('all')
-  const [sortOrder, setSortOrder] = useState('code-asc')
+  const [sortOrder, setSortOrder] = useState('name-asc')
+  // Filtro dos atalhos do card "Alertas de stock": 'all' | 'insufficient' | 'margin'.
+  const [stockFilter, setStockFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [editingService, setEditingService] = useState(null)
   const [formOpen, setFormOpen] = useState(false)
 
+  // Produtos obrigatórios de todos os serviços: lidos pelo id para o semáforo de stock da lista.
+  // A lista completa de consumíveis (por páginas) só é lida quando o formulário abre.
+  const referencedConsumableIds = useMemo(
+    () => services.flatMap((service) => (service.base_consumables ?? []).map((item) => item.consumable_id)),
+    [services],
+  )
+  const consumableOptions = useConsumables(formOpen, referencedConsumableIds)
+  const consumablesById = useMemo(
+    () => new Map(consumableOptions.consumables.map((consumable) => [consumable.id, consumable])),
+    [consumableOptions.consumables],
+  )
+
+  // Filtros, ordenação e contadores são derivados na renderização (sem estado duplicado).
   const visibleServices = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('pt-PT')
     return services
       .filter((service) => {
-        const matchesQuery = !query || [service.name, service.code, service.description]
+        const matchesQuery = !query || [service.name, service.description]
           .some((value) => String(value ?? '').toLocaleLowerCase('pt-PT').includes(query))
-        const matchesCategory = category === 'all' || service.category === category
+        const matchesType = type === 'all' || service.type === type
         const matchesStatus = status === 'all' || (status === 'active' ? service.is_active !== false : service.is_active === false)
-        return matchesQuery && matchesCategory && matchesStatus
+        const matchesStock = stockFilter === 'all' || serviceStockLevel(service, consumablesById) === stockFilter
+        return matchesQuery && matchesType && matchesStatus && matchesStock
       })
-      .sort((first, second) => {
-        if (sortOrder === 'price-asc') return (Number(first.base_price) || 0) - (Number(second.base_price) || 0)
-        if (sortOrder === 'price-desc') return (Number(second.base_price) || 0) - (Number(first.base_price) || 0)
-        return String(first.code ?? '').localeCompare(String(second.code ?? ''), 'pt-PT', { numeric: true })
-      })
-  }, [services, search, category, status, sortOrder])
+      .toSorted(compareServices(sortOrder))
+  }, [services, search, type, status, sortOrder, stockFilter, consumablesById])
 
   const activeCount = services.filter((service) => service.is_active !== false).length
   const inactiveCount = services.length - activeCount
   const catalogShare = services.length ? Math.round((activeCount / services.length) * 100) : null
-  const pricedServices = services.filter((service) => (
-    (typeof service.base_price === 'number' || (typeof service.base_price === 'string' && service.base_price.trim() !== ''))
-      && Number.isFinite(Number(service.base_price))
-      && Number(service.base_price) >= 0
-  ))
+  const pricedServices = services.filter(hasValidPrice)
   const averagePrice = pricedServices.length
-    ? pricedServices.reduce((total, service) => total + Number(service.base_price), 0) / pricedServices.length
+    ? pricedServices.reduce((total, service) => total + service.base_price, 0) / pricedServices.length
     : null
-  const iotServiceCount = services.filter((service) => service.is_iot_enabled === true).length
+  const stockLevels = services.map((service) => serviceStockLevel(service, consumablesById))
+  const insufficientCount = stockLevels.filter((level) => level === STOCK_LEVEL.INSUFFICIENT).length
+  const marginCount = stockLevels.filter((level) => level === STOCK_LEVEL.MARGIN).length
 
   const pageCount = Math.max(1, Math.ceil(visibleServices.length / PAGE_SIZE))
-  const pageServices = visibleServices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const firstResult = visibleServices.length ? (page - 1) * PAGE_SIZE + 1 : 0
-  const lastResult = Math.min(page * PAGE_SIZE, visibleServices.length)
+  // Se um filtro reduzir os resultados, a página atual nunca passa da última.
+  const currentPage = Math.min(page, pageCount)
+  const pageServices = visibleServices.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  const firstResult = visibleServices.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0
+  const lastResult = Math.min(currentPage * PAGE_SIZE, visibleServices.length)
 
   function openCreateForm() {
     setEditingService(null)
@@ -103,85 +122,166 @@ export default function ServicesPage() {
     setFormOpen(true)
   }
 
-  function closeForm() {
+  const closeForm = useCallback(() => {
     setFormOpen(false)
     setEditingService(null)
+  }, [])
+
+  function applyStockFilter(level) {
+    setStockFilter(level)
+    setPage(1)
+  }
+
+  function updateFilter(setter) {
+    return (event) => {
+      setter(event.target.value)
+      setPage(1)
+    }
   }
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-5 pb-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <nav aria-label="Navegação estrutural" className="text-[11px] text-slate-500"><span>Painel</span><span className="mx-2">›</span><span>Gestão</span><span className="mx-2">›</span><span className="font-semibold text-primary">Serviços & Intervenções</span></nav>
-      </div>
+      <nav aria-label="Navegação estrutural" className="text-xs text-slate-600">
+        <span>Painel</span><span className="mx-2" aria-hidden="true">›</span><span>Gestão</span><span className="mx-2" aria-hidden="true">›</span>
+        <span className="font-semibold text-primary" aria-current="page">Serviços e intervenções</span>
+      </nav>
+
       <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-        <div><div className="flex flex-wrap items-center gap-2"><h1 className="text-[26px] font-bold tracking-tight text-primary">Tipos de Intervenção</h1><span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-semibold text-primary">{services.length} serviços registados</span><span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[10px] font-semibold text-cyan-900">Catálogo ativo</span></div><p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-600">Configure o portfólio de serviços técnicos, planos de manutenção preventiva, telemetria IoT e parâmetros de faturação base para despachos no terreno.</p></div>
-        <div className="flex shrink-0 flex-wrap gap-2"><button type="button" onClick={() => exportCatalog(services)} disabled={services.length === 0} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-primary shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"><span aria-hidden="true">⇩</span><span className="ml-2">Exportar catálogo</span></button><button type="button" onClick={openCreateForm} className="rounded-lg bg-[#00577b] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-dark"><span aria-hidden="true">⊕</span><span className="ml-2">Novo tipo de intervenção</span></button></div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Tipos de Intervenção</h1>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-600">
+            Configure os tipos de intervenção, a checklist técnica, os produtos obrigatórios e os preços base.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => downloadCatalog(visibleServices)}
+            disabled={visibleServices.length === 0}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-primary shadow-sm hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span aria-hidden="true">⇩</span><span className="ml-2">Exportar catálogo</span>
+          </button>
+          <button
+            type="button"
+            onClick={openCreateForm}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+          >
+            <span aria-hidden="true">+</span><span className="ml-2">Novo tipo de intervenção</span>
+          </button>
+        </div>
       </header>
 
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <MetricCard
           label="Serviços ativos"
           value={activeCount}
           badge={catalogShare === null ? 'Catálogo vazio' : `${catalogShare}% do catálogo`}
-          footnote={{ icon: '●', text: `${inactiveCount} ${inactiveCount === 1 ? 'serviço inativo' : 'serviços inativos'} no catálogo` }}
-          icon={<MetricIcon><path d="m12 3 2.2 1.6 2.7-.1.8 2.6 2.2 1.6-1 2.5 1 2.5-2.2 1.6-.8 2.6-2.7-.1L12 20l-2.2-1.6-2.7.1-.8-2.6-2.2-1.6 1-2.5-1-2.5 2.2-1.6.8-2.6 2.7.1L12 3Z" /><path d="m9 12 2 2 4-4" /></MetricIcon>}
-          tone="bg-sky-50"
+          footnote={`${inactiveCount} ${inactiveCount === 1 ? 'serviço inativo' : 'serviços inativos'}`}
+          icon={<MetricIcon><circle cx="12" cy="12" r="8" /><path d="m9 12 2 2 4-4" /></MetricIcon>}
+        />
+        <StockAlertsCard
+          insufficientCount={insufficientCount}
+          marginCount={marginCount}
+          activeFilter={stockFilter}
+          onFilter={applyStockFilter}
         />
         <MetricCard
-          label="Preço médio base"
-          value={averagePrice === null ? '—' : new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(averagePrice)}
+          label="Preço médio base (IVA incl.)"
+          value={averagePrice === null ? '—' : formatPrice(averagePrice)}
           badge={averagePrice === null ? 'Sem preços' : `${pricedServices.length} ${pricedServices.length === 1 ? 'serviço' : 'serviços'}`}
-          footnote={{ icon: '☷', text: 'Média dos preços base registados no catálogo' }}
-          icon={<MetricIcon color="#075985">
-            <path d="M4 7.5v11h13.5" strokeWidth="2" />
-            <rect x="6.5" y="4.5" width="14" height="13" rx="2.2" fill="currentColor" stroke="currentColor" />
-            <path d="M9 7h9v8h-9z" fill="#dbeafe" stroke="none" />
-            <path d="M9 7c0 1-.7 1.7-1.7 1.7M18 15c0-1 .7-1.7 1.7-1.7" stroke="#dbeafe" strokeWidth="1.2" />
-            <circle cx="13.5" cy="11" r="2.6" fill="#fff" stroke="#dbeafe" strokeWidth=".7" />
-            <text x="13.5" y="13" textAnchor="middle" fill="currentColor" stroke="none" fontSize="6.5" fontWeight="700">€</text>
-          </MetricIcon>}
-          accent="bg-blue-100 text-primary"
-          tone="bg-indigo-50"
-        />
-        <MetricCard
-          label="Intervenções este mês"
-          value="—"
-          badge="Indisponível"
-          footnote={{ icon: '✓', text: 'Sem fonte de dados operacionais ligada' }}
-          icon={<MetricIcon><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M8 3v4M16 3v4M4 10h16M8 14h2M14 14h2M8 17h2" /></MetricIcon>}
-          accent="bg-blue-100 text-sky-700"
-          tone="bg-sky-50"
-        />
-        <MetricCard
-          label="Com telemetria IoT"
-          value={iotServiceCount}
-          badge="Elegíveis"
-          footnote={{ icon: '↟', text: 'Estado de sincronização indisponível' }}
-          icon={<MetricIcon color="white"><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.5 5.5a9 9 0 0 0 0 13M18.5 5.5a9 9 0 0 1 0 13M12 11v2" /><circle cx="12" cy="12" r="1" /></MetricIcon>}
-          accent="bg-teal-800 text-white"
-          tone="bg-cyan-100"
+          footnote="Média dos preços base do catálogo"
+          icon={<MetricIcon><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></MetricIcon>}
         />
       </div>
 
-      <section aria-label="Filtros do catálogo" className="grid gap-2 rounded-lg border border-slate-100 bg-white p-3 shadow-sm md:grid-cols-2 xl:grid-cols-[minmax(220px,1.2fr)_repeat(3,minmax(150px,1fr))]">
-        <label className="relative block"><span className="sr-only">Pesquisar serviços</span><span aria-hidden="true" className="absolute left-3 top-2 text-slate-400">⌕</span><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} placeholder="Pesquisar por nome de serviço ou código" className="w-full rounded-md border border-transparent bg-blue-50 px-3 py-2 pl-8 text-[11px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" /></label>
-        <label className="flex items-center gap-2 rounded-md bg-blue-50 px-3 text-[9px] text-slate-500"><span className="shrink-0 font-semibold uppercase">Categoria:</span><select value={category} onChange={(event) => { setCategory(event.target.value); setPage(1) }} className="min-w-0 flex-1 bg-transparent py-2 text-[11px] font-medium text-primary outline-none"><option value="all">Todas as Categorias</option>{SERVICE_CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-        <label className="flex items-center gap-2 rounded-md bg-blue-50 px-3 text-[9px] text-slate-500"><span className="shrink-0 font-semibold uppercase">Estado:</span><select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1) }} className="min-w-0 flex-1 bg-transparent py-2 text-[11px] font-medium text-primary outline-none"><option value="all">Todos</option><option value="active">Ativos</option><option value="inactive">Inativos</option></select></label>
-        <label className="flex items-center gap-2 rounded-md bg-blue-50 px-3 text-[9px] text-slate-500"><span className="shrink-0 font-semibold uppercase">Ordenar:</span><select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} className="min-w-0 flex-1 bg-transparent py-2 text-[11px] font-medium text-primary outline-none"><option value="code-asc">Código (Crescente)</option><option value="price-asc">Preço (Crescente)</option><option value="price-desc">Preço (Decrescente)</option></select></label>
+      <section aria-label="Filtros do catálogo" className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-2 xl:grid-cols-[minmax(220px,1.2fr)_repeat(3,minmax(160px,1fr))]">
+        <label className="relative block">
+          <span className="sr-only">Pesquisar serviços</span>
+          <span aria-hidden="true" className="absolute left-3 top-2 text-slate-500">⌕</span>
+          <input
+            type="search"
+            value={search}
+            onChange={updateFilter(setSearch)}
+            placeholder="Pesquisar por nome ou descrição"
+            className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 pl-8 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+        </label>
+        <label className={filterLabelClass}>
+          <span className="shrink-0 font-semibold uppercase">Tipo:</span>
+          <select value={type} onChange={updateFilter(setType)} className={filterSelectClass}>
+            <option value="all">Todos os tipos</option>
+            {SERVICE_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+        </label>
+        <label className={filterLabelClass}>
+          <span className="shrink-0 font-semibold uppercase">Estado:</span>
+          <select value={status} onChange={updateFilter(setStatus)} className={filterSelectClass}>
+            <option value="all">Todos</option>
+            <option value="active">Ativos</option>
+            <option value="inactive">Inativos</option>
+          </select>
+        </label>
+        <label className={filterLabelClass}>
+          <span className="shrink-0 font-semibold uppercase">Ordenar:</span>
+          <select value={sortOrder} onChange={updateFilter(setSortOrder)} className={filterSelectClass}>
+            <option value="name-asc">Nome (A–Z)</option>
+            <option value="price-asc">Preço (crescente)</option>
+            <option value="price-desc">Preço (decrescente)</option>
+          </select>
+        </label>
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
-        <ErrorAlert message={error} onClose={() => setError('')} />
-        {loading ? <LoadingSpinner label="A carregar o catálogo de serviços…" /> : <>
-          <ServicesTable services={pageServices} onEdit={openEditForm} onToggleActive={setServiceActive} />
-          <footer className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/70 px-3 py-2 text-[10px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <span>A mostrar {firstResult}–{lastResult} de {visibleServices.length} serviços registados</span>
-            <div className="flex items-center justify-end gap-2"><button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="rounded-md px-3 py-1.5 font-medium hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Anterior</button><span className="px-2 font-semibold text-slate-700">{page} / {pageCount}</span><button type="button" disabled={page >= pageCount} onClick={() => setPage((current) => current + 1)} className="rounded-md px-3 py-1.5 font-medium hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Seguinte</button></div>
-          </footer>
-        </>}
+      {stockFilter !== 'all' && (
+        <p className="flex flex-wrap items-center gap-2 text-sm text-slate-700" aria-live="polite">
+          <span>A mostrar só serviços com: <strong>{STOCK_LEVEL_LABELS[stockFilter].toLocaleLowerCase('pt-PT')}</strong></span>
+          <button type="button" onClick={() => applyStockFilter('all')} className="rounded-full border border-slate-300 bg-white px-3 py-0.5 text-xs font-medium text-primary hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+            Limpar filtro ✕
+          </button>
+        </p>
+      )}
+
+      <section aria-label="Lista de serviços" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        {error && (
+          <div className="space-y-2 p-3">
+            <ErrorAlert message={error} onClose={clearError} />
+            {services.length === 0 && !loading && (
+              <button type="button" onClick={reload} className="text-sm font-medium text-primary hover:underline">Tentar novamente</button>
+            )}
+          </div>
+        )}
+        {loading ? <LoadingSpinner label="A carregar o catálogo de serviços…" /> : (
+          <>
+            <ServicesTable
+              services={pageServices}
+              consumablesById={consumablesById}
+              notFoundIds={consumableOptions.notFoundIds}
+              pendingIds={pendingIds}
+              onEdit={openEditForm}
+              onToggleActive={toggleServiceActive}
+            />
+            <StockLegend />
+            <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+              <span aria-live="polite">A mostrar {firstResult}–{lastResult} de {visibleServices.length} serviços</span>
+              <nav aria-label="Paginação" className="flex items-center justify-end gap-2">
+                <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-md px-3 py-1.5 font-medium hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-40">Anterior</button>
+                <span className="px-2 font-semibold text-slate-700">{currentPage} / {pageCount}</span>
+                <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)} className="rounded-md px-3 py-1.5 font-medium hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-40">Seguinte</button>
+              </nav>
+            </footer>
+          </>
+        )}
       </section>
 
-      {formOpen && <ServiceFormModal key={editingService?.id ?? 'new'} service={editingService} onClose={closeForm} onSave={saveService} />}
+      {formOpen && (
+        <ServiceFormModal
+          key={editingService?.id ?? 'new'}
+          service={editingService}
+          consumableOptions={consumableOptions}
+          onClose={closeForm}
+          onSave={saveService}
+        />
+      )}
     </div>
   )
 }
