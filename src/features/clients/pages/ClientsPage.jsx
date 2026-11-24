@@ -8,9 +8,9 @@ import ClientFormModal from '../components/ClientFormModal'
 import ClientsStats from '../components/ClientsStats'
 import ClientsTable from '../components/ClientsTable'
 import ClientsToolbar from '../components/ClientsToolbar'
-import ConfirmDialog from '../components/ConfirmDialog'
-import Notice from '../components/Notice'
-import { CARD_CLASS, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../components/styles'
+import ConfirmDialog from '../../../shared/components/ConfirmDialog'
+import Notice from '../../../shared/components/Notice'
+import { CARD_CLASS, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../../../shared/components/uiClasses'
 import { sortClients } from '../utils/sort'
 
 /**

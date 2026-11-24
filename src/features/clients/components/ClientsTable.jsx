@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
-import StatusBadge from './StatusBadge'
-import { CARD_CLASS, LINK_BUTTON, LINK_DANGER_BUTTON } from './styles'
+import StatusBadge from '../../../shared/components/StatusBadge'
+import { CARD_CLASS, LINK_BUTTON, LINK_DANGER_BUTTON } from '../../../shared/components/uiClasses'
 import { formatClientNumber, formatVolume, initialsOf, poolTypeLabel } from '../utils/labels'
 import { poolDisplayName, sortPools } from '../utils/poolForm'
 

@@ -1,5 +1,5 @@
-import StatusBadge from './StatusBadge'
-import { CARD_CLASS, DANGER_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from './styles'
+import StatusBadge from '../../../shared/components/StatusBadge'
+import { CARD_CLASS, DANGER_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../../../shared/components/uiClasses'
 import { formatClientNumber, formatDate, initialsOf } from '../utils/labels'
 
 function Info({ label, children }) {
