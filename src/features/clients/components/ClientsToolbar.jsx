@@ -1,4 +1,4 @@
-import { INPUT_CLASS } from './styles'
+import { INPUT_CLASS } from '../../../shared/components/uiClasses'
 import { CLIENT_SORT_OPTIONS, CLIENT_STATUS_FILTERS } from '../utils/labels'
 
 export default function ClientsToolbar({ searchTerm, onSearchChange, searching, status, onStatusChange, sort, onSortChange }) {

@@ -1,4 +1,4 @@
-// Classes Tailwind partilhadas pelos componentes do módulo (tema Guimágua definido em src/styles/base.css).
+// Classes Tailwind partilhadas pelos módulos (tema Guimágua definido em src/styles/base.css).
 
 export const INPUT_CLASS =
   'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-slate-100 disabled:text-slate-500'
