@@ -41,7 +41,7 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
 - **Ler outros módulos:** um módulo pode ler coleções de outros módulos a partir do **seu próprio** serviço. Nunca editar o serviço ou a pasta de outro grupo.
 - **Ficheiros partilhados (não alterar sem autorização explícita):**
   - código: `src/App.jsx`, `src/main.jsx`, `src/config/firebase.js`, `src/constants/*`, `src/layout/*`, `src/shared/*`, `src/styles/base.css`, `src/features/auth/*`;
-  - configuração: `index.html`, `vite.config.js`, `eslint.config.js`, `package.json`, `package-lock.json`, `firestore.rules`, `storage.rules`, `firebase.json`, `.github/*`;
+  - configuração: `index.html`, `vite.config.js`, `eslint.config.js`, `package.json`, `package-lock.json`, `firestore.rules`, `storage.rules`, `firebase.json`, `.firebaserc`, `.github/*`;
   - agentes e documentação: `AGENTS.md`, `CLAUDE.md`, `.claude/*`, `.agent/*`, `docs/modelo-dados.md`, `docs/decisoes.md`.
 
   Se a tarefa exigir uma dependência nova ou alterar um ficheiro partilhado: **pára e justifica antes de mexer**.
@@ -64,7 +64,7 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
    - ESLint 10 (`eslint.config.js`).
 
    Qualquer mudança à stack tem de ser justificada antes.
-2. **Quotas gratuitas do Firebase:** o projeto está no plano Blaze em período de teste, sem custos (D-14), por causa do Storage. O código tem de caber nas **quotas gratuitas** e **não se usam Cloud Functions**, mesmo estando disponíveis no Blaze.
+2. **Quotas gratuitas do Firebase:** o projeto está no plano Spark. A passagem a Blaze está pendente (P-08) e é só por causa do Storage. Em qualquer dos planos, o código tem de caber nas quotas gratuitas e **não se usam Cloud Functions**.
    - Listas pequenas (ex.: `services`, `users`) podem ser carregadas uma vez e filtradas e ordenadas no cliente, sem pedidos repetidos.
    - Listas que crescem (`clients`, `consumables`, histórico de `appointments` e `tickets`) usam paginação por cursor (`limit` + `startAfter`), conforme o RNF-WEB02, e `where` quando reduz leituras.
    - Nunca criar subscrições em ciclo (dependências de `useEffect` estáveis; limpar sempre o `onSnapshot`).
@@ -76,7 +76,7 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
    - Nunca contornar `RequireAuth` ou `RequireRole`.
    - Em `team`, o administrador autenticado não pode alterar o próprio `role` nem desativar a própria conta.
    - **Contas de técnicos e comerciais:** só no módulo `team`, seguindo o fluxo da D-08 (instância secundária do Auth, password temporária nunca mostrada, email de definição de password). Em mais nenhum sítio se criam contas.
-   - **Ficheiros (fotos, PDFs):** só no Firebase Storage, nos caminhos da D-09; nunca no Google Drive. O acesso passa sempre pelo serviço do módulo (`getStorage` em `src/config/firebase.js`, acrescentado no primeiro módulo que precisar). Ficheiros limitados a imagens e PDF, com tamanho máximo validado antes do upload.
+   - **Ficheiros (fotos, PDFs):** só no Firebase Storage, nos caminhos da D-09; nunca no Google Drive. Enquanto a P-08 (plano Blaze) não estiver feita, não implementar upload nem download: mostrar um placeholder.
 7. **Identidade visual:**
    - Usar as classes `bg-primary`, `text-primary`, `hover:bg-primary-dark` e `bg-background` em vez de cores hexadecimais soltas: primária `#0B4F6C`, primária escura `#083B51`, fundo `#F4F7F9`, cartões brancos com borda subtil (`border-slate-200`). A fonte de verdade é `src/styles/base.css`.
    - Reutilizar `LoadingSpinner`, `ErrorAlert` e `MessagePage`.
@@ -124,7 +124,11 @@ Fluxo unidirecional obrigatório: `Componentes (.jsx)` → `Hooks (.js)` → `Se
    - Correr `npm run lint` e `npm run build` (no Windows, se o PowerShell bloquear scripts: `npm.cmd run lint` / `npm.cmd run build`) e mostrar o resultado real.
    - Confirmar que nenhum ficheiro fora de `src/services/` importa `firebase/*`.
 4. **Guia de teste:** terminar com passos concretos para testar no browser e confirmar na consola do Firestore.
-5. **Sessões longas:** resumir o estado (feito / falta / decisões) para se poder retomar numa sessão nova.
+5. **Entregar:** só depois da prova e com confirmação explícita em cada passo.
+   - **Módulo:** commit → push do `feat/*` → PR para `grupo-<a|b>` → merge (squash) só com CI verde e pelo menos uma aprovação de alguém que não seja o autor.
+   - **Promoção** (responsável do grupo): PR `grupo-<a|b>` → `main` com aprovação e CI verde (merge commit); depois sincronizar os dois grupos com a `main`.
+   - **Deploy:** produção no Firebase Hosting, **só a partir da `main` atualizada**, depois de lint e build, com `firebase deploy --only hosting`. Nunca publicar regras do Firestore ou do Storage (D-13).
+6. **Sessões longas:** resumir o estado (feito / falta / decisões) para se poder retomar numa sessão nova.
 
 ## 8. Definição de "feito" (cada módulo/PR)
 

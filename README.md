@@ -35,10 +35,19 @@ docs/          especificação completa (requisitos, protótipos, modelo de dado
 
 ### Com o Claude Code
 
+Pré-requisitos (uma vez por máquina): Claude Code, GitHub CLI (`winget install GitHub.cli` e depois `gh auth login`) e um `.env.local` preenchido.
+
 Na raiz do repositório, num branch `feat/<a|b>-<modulo>`:
 1. `claude`
 2. `/novo-modulo <modulo>`: lê a documentação e o código, propõe o plano e espera aprovação.
 3. Implementar.
-4. `/fechar-modulo`: lint, build, verificação de fronteiras, guia de teste e descrição do PR.
+4. `/fechar-modulo`: prova (lint, build, fronteiras), commit, push e PR para o grupo. Depois de um colega aprovar, corre-se de novo para fazer o merge.
+5. `/publicar grupo-a|grupo-b` (responsável do grupo): PR do grupo para a `main`, sincronização dos grupos e deploy de produção.
 
 Com outros agentes: [`docs/prompts/arranque-modulo.md`](docs/prompts/arranque-modulo.md).
+
+## Deploy
+
+Produção no **Firebase Hosting**, só a partir da `main` (`/publicar`, ou à mão: `npm run build` e depois `npx firebase-tools deploy --only hosting`).
+Configuração uma vez por quem publica: `npx firebase-tools login` e `npx firebase-tools use --add`. Este último substitui o marcador em `.firebaserc` pelo ID do projeto; faz commit desse ficheiro.
+As regras do Firestore e do Storage não se publicam a partir daqui (D-13).
