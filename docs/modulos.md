@@ -30,7 +30,7 @@ As specs `implementacao/` de cada módulo são as dos cards do Trello: os nomes 
 - Spec: `04-backoffice-web/tickets/implementacao/` (card #124, **sem descrição**: o plano tem de propor o âmbito)
 - Requisitos: RF-WEB06 (triagem: Pendente → Em Análise → Respondido) · US07
 - Contexto (origem dos pedidos na app): `05-app-cliente/pedido-avaria-orcamento/`, `05-app-cliente/agendamento-manutencao/`
-- Decisões: D-07 (estados `pending`/`in_analysis`/`responded`), D-09 (fotos no Storage: placeholder até à P-08)
+- Decisões: D-07 (estados `pending`/`in_analysis`/`responded`), D-09 (fotos no Storage, mostradas via `getDownloadURL`)
 
 ## agenda (Grupo A)
 - Ecrãs: `04-backoffice-web/agenda/calendario-geral/`, `04-backoffice-web/agenda/detalhe-do-dia/`, `04-backoffice-web/agenda/modal-novo-agendamento/`
@@ -44,7 +44,7 @@ As specs `implementacao/` de cada módulo são as dos cards do Trello: os nomes 
 - Spec: `04-backoffice-web/relatorios/implementacao/` (card #127, **sem descrição** e sem protótipo: o plano tem de propor o âmbito)
 - Requisitos: RF-WEB07 (auditoria e histórico), RF-WEB08 (geração de PDFs) · US10
 - Contexto: `05-app-cliente/historico-e-faturacao/`
-- Decisões: D-09 (PDF em `appointments/{id}/report.pdf`: bloqueado até à P-08; gerar PDF exige uma dependência nova, a justificar no plano)
+- Decisões: D-09 (PDF gerado no backoffice e guardado em `appointments/{id}/report.pdf`; gerar PDF exige uma dependência nova, a justificar no plano)
 
 ## clients (Grupo B)
 - Ecrãs: `04-backoffice-web/clientes-e-piscinas/lista-clientes/`, `.../modal-novo-cliente/`, `.../ficha-cliente/`, `.../detalhe-piscina/`

@@ -163,7 +163,7 @@ Documento único, editado pelo admin no módulo `dashboard`. Comunicar à equipa
 
 ## Ficheiros (Firebase Storage, D-09)
 
-Caminhos: `tickets/{ticketId}/…`, `appointments/{appointmentId}/photos/…`, `appointments/{appointmentId}/survey/…`, `appointments/{appointmentId}/report.pdf`. Exige o plano Blaze (P-08).
+Caminhos: `tickets/{ticketId}/…`, `appointments/{appointmentId}/photos/…`, `appointments/{appointmentId}/survey/…`, `appointments/{appointmentId}/report.pdf`. Exige o plano Blaze (ativo, D-14).
 
 ## Relações
 

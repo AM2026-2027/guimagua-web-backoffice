@@ -15,11 +15,12 @@ Este ficheiro é partilhado: só se altera com autorização, via PR `chore/*` p
 | D-06 | 24/11/2026 | **Fluxo Git:** `feat/<a\|b>-*` → `grupo-<a\|b>` → `main`. Os branches de grupo são sincronizados com a `main` depois de cada merge; as alterações partilhadas entram via `chore/*` direto para a `main`; a CI (lint + build) é obrigatória em todos os PR. |
 | D-07 | 24/11/2026 | **Enums em minúsculas `snake_case`** no Firestore, coerentes com os roles já em uso. Valores em `docs/modelo-dados.md`. A app Android mapeia com `@PropertyName` ou um conversor. A UI mostra rótulos PT-PT a partir de um mapa de constantes. |
 | D-08 | 24/11/2026 | **Contas de técnicos e comerciais** são criadas **manualmente pelo admin** no backoffice, no módulo `team` (aba "Equipa & Técnicos"). O fluxo técnico está descrito mais abaixo. As contas de clientes continuam a ser criadas pela App Cliente. |
-| D-09 | 24/11/2026 | **Fotografias e PDFs ficam apenas no Firebase Storage.** O Google Drive com Service Account (RNF-GLB04, `DriveStorageRepository`) foi abandonado; comunicar à equipa Android. **Requer o plano Blaze**: ver P-08. |
+| D-09 | 24/11/2026 | **Fotografias e PDFs ficam apenas no Firebase Storage.** O Google Drive com Service Account (RNF-GLB04, `DriveStorageRepository`) foi abandonado; comunicar à equipa Android. Requer o plano Blaze, ativo desde 24/11/2026 (D-14). |
 | D-10 | 24/11/2026 | **Stock** (antiga P-04): comprometido = soma de `services.base_consumables` dos `appointments` com estado `scheduled`/`in_progress`, calculado no cliente; projetado = físico − comprometido; o serviço da agenda atualiza `consumables.projected_stock` ao criar ou cancelar um agendamento; a app abate o stock físico ao concluir a intervenção, numa transação/batch (RNF-TEC02). |
 | D-11 | 24/11/2026 | **Limiares de alerta** (antiga P-05): documento único `settings/alert_thresholds` (coleção nova `settings`), editável pelo admin no módulo `dashboard`. Campos em `docs/modelo-dados.md`. |
 | D-12 | 24/11/2026 | **Telemetria** (antiga P-06): enquanto não houver integração com sensores, um alerta é a última `pool_reading` de cada piscina fora dos limiares de `settings/alert_thresholds`. |
 | D-13 | 24/11/2026 | **Regras de segurança** (antiga P-07): `firestore.rules` e `storage.rules` são ficheiros partilhados, alterados só via PR revisto por um elemento de cada equipa (web e Android). |
+| D-14 | 24/11/2026 | **Plano Blaze** (antiga P-08): ativado em período de teste, sem custos. Mantém-se a regra de ficar dentro das quotas gratuitas e de não usar Cloud Functions. **Antes do fim do período de teste**, confirmar na consola da Google Cloud a data de fim e o que acontece à conta de faturação, para o Storage não deixar de funcionar a meio do projeto. |
 
 ### D-08: fluxo de criação de contas no módulo `team`
 
@@ -53,10 +54,10 @@ Este ficheiro é partilhado: só se altera com autorização, via PR `chore/*` p
 
 ## Pendentes
 
-### P-08: Passar o projeto Firebase para o plano Blaze
-- **Porquê:** o Cloud Storage for Firebase deixou de estar disponível no plano Spark. Num projeto Spark não há acesso a nenhum bucket e as chamadas à API devolvem erros 402/403. O uso gratuito mantém-se no plano Blaze (fonte: Firebase, "FAQs about changes to Cloud Storage for Firebase pricing and default buckets", firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024).
-- **Proposta:** o responsável do projeto associa uma conta de faturação, passa o projeto para Blaze e cria um **alerta de orçamento** baixo (ex.: 1 €) na Google Cloud.
-- **Até lá:** nenhum módulo faz upload nem leitura de ficheiros; os ecrãs mostram um placeholder. As regras de poupança de leituras e escritas continuam a aplicar-se.
+Nenhuma de momento.
+
+### Antiga P-08: plano Blaze (resolvida, ver D-14)
+O Cloud Storage for Firebase deixou de estar disponível no plano Spark: num projeto Spark não há acesso a buckets e as chamadas à API devolvem erros 402/403. O uso gratuito mantém-se no Blaze (fonte: firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024).
 
 ## Ações no GitHub
 
