@@ -64,7 +64,7 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
    - ESLint 10 (`eslint.config.js`).
 
    Qualquer mudança à stack tem de ser justificada antes.
-2. **Quotas gratuitas do Firebase:** o projeto está no plano Spark. A passagem a Blaze está pendente (P-08) e é só por causa do Storage. Em qualquer dos planos, o código tem de caber nas quotas gratuitas e **não se usam Cloud Functions**.
+2. **Quotas gratuitas do Firebase:** o projeto está no plano Blaze desde 24/11/2026 (D-14), em período de teste e só por causa do Storage. Mesmo assim, o código tem de caber nas quotas gratuitas e **não se usam Cloud Functions**.
    - Listas pequenas (ex.: `services`, `users`) podem ser carregadas uma vez e filtradas e ordenadas no cliente, sem pedidos repetidos.
    - Listas que crescem (`clients`, `consumables`, histórico de `appointments` e `tickets`) usam paginação por cursor (`limit` + `startAfter`), conforme o RNF-WEB02, e `where` quando reduz leituras.
    - Nunca criar subscrições em ciclo (dependências de `useEffect` estáveis; limpar sempre o `onSnapshot`).
@@ -76,7 +76,7 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
    - Nunca contornar `RequireAuth` ou `RequireRole`.
    - Em `team`, o administrador autenticado não pode alterar o próprio `role` nem desativar a própria conta.
    - **Contas de técnicos e comerciais:** só no módulo `team`, seguindo o fluxo da D-08 (instância secundária do Auth, password temporária nunca mostrada, email de definição de password). Em mais nenhum sítio se criam contas.
-   - **Ficheiros (fotos, PDFs):** só no Firebase Storage, nos caminhos da D-09; nunca no Google Drive. Enquanto a P-08 (plano Blaze) não estiver feita, não implementar upload nem download: mostrar um placeholder.
+   - **Ficheiros (fotos, PDFs):** só no Firebase Storage (disponível com o plano Blaze, D-14), nos caminhos da D-09; nunca no Google Drive. O Firestore guarda caminhos, não URLs. O `getStorage` entra em `src/config/firebase.js` no primeiro módulo que precisar dele, com a regra de revisão da D-09.
 7. **Identidade visual:**
    - Usar as classes `bg-primary`, `text-primary`, `hover:bg-primary-dark` e `bg-background` em vez de cores hexadecimais soltas: primária `#0B4F6C`, primária escura `#083B51`, fundo `#F4F7F9`, cartões brancos com borda subtil (`border-slate-200`). A fonte de verdade é `src/styles/base.css`.
    - Reutilizar `LoadingSpinner`, `ErrorAlert` e `MessagePage`.

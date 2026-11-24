@@ -116,7 +116,7 @@ Convenções:
 | `end_date` | timestamp? | proposto | Fim previsto; alternativa: `date + services.default_duration_min` |
 | `client_id` | string | proposto | Desnormalizado para filtros sem leituras extra |
 | `ticket_id` | string? | proposto | Quando o agendamento nasce de um pedido |
-| `client_name`, `tech_name` | string | proposto | Desnormalização opcional para poupar leituras (plano Spark) |
+| `client_name`, `tech_name` | string | proposto | Desnormalização opcional para poupar leituras (quotas gratuitas) |
 | `created_at`, `updated_at` | timestamp | proposto | |
 
 Ciclo de vida: `docs/02-arquitetura-e-dados/diagrama-estados-servico/`. Regras do agendamento (RF-WEB04): bloquear sobreposição de horário para o mesmo colaborador e alertar para rutura de stock projetado.

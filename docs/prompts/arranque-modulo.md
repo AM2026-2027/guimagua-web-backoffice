@@ -16,7 +16,7 @@ Nesta fase **não cries nem edites ficheiros**.
    - resumo do módulo;
    - ficheiros por camada;
    - coleções e campos (existentes vs. **campo novo — validar com a equipa Android**) e validações;
-   - estratégia de leitura no Firestore com estimativa de leituras (plano Spark);
+   - estratégia de leitura no Firestore com estimativa de leituras (quotas gratuitas);
    - discrepâncias entre protótipo, spec, requisitos e modelo;
    - dúvidas com sugestão;
    - ficheiros partilhados afetados ("nenhum", se for o caso).
