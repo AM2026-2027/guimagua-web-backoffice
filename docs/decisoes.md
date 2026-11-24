@@ -21,6 +21,7 @@ Este ficheiro é partilhado: só se altera com autorização, via PR `chore/*` p
 | D-12 | 24/11/2026 | **Telemetria** (antiga P-06): enquanto não houver integração com sensores, um alerta é a última `pool_reading` de cada piscina fora dos limiares de `settings/alert_thresholds`. |
 | D-13 | 24/11/2026 | **Regras de segurança** (antiga P-07): `firestore.rules` e `storage.rules` são ficheiros partilhados, alterados só via PR revisto por um elemento de cada equipa (web e Android). |
 | D-14 | 24/11/2026 | **Plano Blaze** (antiga P-08): ativado em período de teste, sem custos. Mantém-se a regra de ficar dentro das quotas gratuitas e de não usar Cloud Functions. **Antes do fim do período de teste**, confirmar na consola da Google Cloud a data de fim e o que acontece à conta de faturação, para o Storage não deixar de funcionar a meio do projeto. |
+| D-15 | 24/11/2026 | **Aprovação dos PR do product owner:** os PR abertos pelo product owner (conta GitHub `ldcc9298-arch`) não precisam de revisão nem de aprovação de outra pessoa; basta a CI verde e não haver conflitos. Vale para PR de módulo, de promoção (`grupo-<a\|b>` → `main`) e `chore/*`. Para os PR dos restantes elementos, mantém-se a regra de pelo menos uma aprovação de alguém que não seja o autor. |
 
 ### D-08: fluxo de criação de contas no módulo `team`
 

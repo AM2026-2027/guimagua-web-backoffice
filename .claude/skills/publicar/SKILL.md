@@ -32,7 +32,7 @@ Regras:
 
 - `gh pr list --base main --head $ARGUMENTS --state open --json number,url`. Se não houver PR, cria-o (com confirmação): `gh pr create --base main --head $ARGUMENTS --title "release($ARGUMENTS): <resumo>" --body "<lista dos PR incluídos>"`.
 - `gh pr checks <n>`: 0 = verde, 8 = a correr, outro = falhou.
-- `gh pr view <n> --json author,reviews,mergeable,url`: tem de haver **pelo menos uma review `APPROVED` de alguém que não seja o autor**, de preferência alguém do outro grupo, porque passa a afetar todos.
+- `gh pr view <n> --json author,reviews,mergeable,url`: tem de haver **pelo menos uma review `APPROVED` de alguém que não seja o autor**, de preferência alguém do outro grupo, porque passa a afetar todos. Exceção (D-15): se o autor do PR for o product owner (`ldcc9298-arch`), não é precisa aprovação.
 - Se faltar CI ou aprovação: diz o que falta e termina.
 - Com tudo verde, e após confirmação: `gh pr merge <n> --merge` (merge commit, para manter o histórico do grupo).
 

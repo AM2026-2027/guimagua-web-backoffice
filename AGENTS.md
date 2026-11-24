@@ -36,7 +36,7 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
   - Branches curtos: idealmente fazer merge em menos de uma semana.
 - **Sincronizar com a `main`:** sempre que a `main` recebe um merge, o responsável de cada grupo traz a `main` para o branch do grupo (PR `main` → `grupo-<a|b>`) antes de começarem features novas.
   - Antes de começar, confirmar com `git log --oneline grupo-<a|b>..origin/main`: se a lista não estiver vazia, o branch do grupo está atrasado e é preciso avisar.
-- **Alterações a ficheiros partilhados:** branch `chore/<descricao>` a partir da `main`, PR direto para a `main`, revisto por um elemento de cada grupo; depois, sincronizar os dois grupos.
+- **Alterações a ficheiros partilhados:** branch `chore/<descricao>` a partir da `main`, PR direto para a `main`, revisto por um elemento de cada grupo (exceto os PR do product owner, D-15); depois, sincronizar os dois grupos.
 - **CI:** cada PR corre `lint` e `build` (`.github/workflows/ci.yml`). Só se faz merge com a CI verde.
 - **Ler outros módulos:** um módulo pode ler coleções de outros módulos a partir do **seu próprio** serviço. Nunca editar o serviço ou a pasta de outro grupo.
 - **Ficheiros partilhados (não alterar sem autorização explícita):**
@@ -127,6 +127,7 @@ Fluxo unidirecional obrigatório: `Componentes (.jsx)` → `Hooks (.js)` → `Se
 5. **Entregar:** só depois da prova e com confirmação explícita em cada passo.
    - **Módulo:** commit → push do `feat/*` → PR para `grupo-<a|b>` → merge (squash) só com CI verde e pelo menos uma aprovação de alguém que não seja o autor.
    - **Promoção** (responsável do grupo): PR `grupo-<a|b>` → `main` com aprovação e CI verde (merge commit); depois sincronizar os dois grupos com a `main`.
+   - **Exceção (D-15):** os PR abertos pelo product owner (conta GitHub `ldcc9298-arch`) não precisam de aprovação de outra pessoa; continuam a exigir CI verde e ausência de conflitos.
    - **Deploy:** produção no Firebase Hosting, **só a partir da `main` atualizada**, depois de lint e build, com `firebase deploy --only hosting`. Nunca publicar regras do Firestore ou do Storage (D-13).
 6. **Sessões longas:** resumir o estado (feito / falta / decisões) para se poder retomar numa sessão nova.
 

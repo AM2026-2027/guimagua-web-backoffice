@@ -1,4 +1,4 @@
-import { CARD_CLASS } from './styles'
+import { CARD_CLASS } from '../../../shared/components/uiClasses'
 
 const NUMBER_FORMAT = new Intl.NumberFormat('pt-PT')
 
