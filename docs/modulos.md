@@ -5,14 +5,14 @@ Requisitos: `01-requisitos/lista-requisitos/README.md` · User stories: `01-requ
 
 | Módulo | Rota | Grupo | Branch | Pasta da feature | Serviço | Escreve em | Lê de |
 |---|---|---|---|---|---|---|---|
-| dashboard | `/dashboard` | A | `feat/a-dashboard` | `src/features/dashboard/` | `dashboardService.js` | — | `appointments`, `tickets`, `pool_readings`, `consumables`, `users` |
+| dashboard | `/dashboard` | A | `feat/a-dashboard` | `src/features/dashboard/` | `dashboardService.js` | `settings/alert_thresholds` (D-11) | `appointments`, `tickets`, `pool_readings`, `consumables`, `users`, `settings` |
 | tickets | `/tickets` | A | `feat/a-tickets` | `src/features/tickets/` | `ticketsService.js` | `tickets` | `clients`, `pools` |
-| agenda | `/agenda` | A | `feat/a-agenda` | `src/features/agenda/` | `agendaService.js` | `appointments` (e `consumables.projected_stock`, ver P-04) | `users`, `clients`, `pools`, `services`, `consumables`, `tickets` |
+| agenda | `/agenda` | A | `feat/a-agenda` | `src/features/agenda/` | `agendaService.js` | `appointments` (e `consumables.projected_stock`, D-10) | `users`, `clients`, `pools`, `services`, `consumables`, `tickets` |
 | reports | `/reports` | A | `feat/a-reports` | `src/features/reports/` | `reportsService.js` | — | `appointments`, `pool_readings`, `clients`, `pools`, `users` |
 | clients | `/clients` | B | `feat/b-clients` | `src/features/clients/` | `clientsService.js` (inclui `pools`) | `clients`, `pools` | `appointments`, `pool_readings` (histórico da piscina) |
 | team | `/team` | B | `feat/b-team` | `src/features/team/` | extensões em `userService.js` | `users` | — |
 | services-catalog | `/services` | B | `feat/b-services` | `src/features/services-catalog/` | `servicesCatalogService.js` | `services` | `consumables` |
-| inventory | `/inventory` | B | `feat/b-inventory` | `src/features/inventory/` | `inventoryService.js` | `consumables` | `appointments`, `services` (stock comprometido, P-04) |
+| inventory | `/inventory` | B | `feat/b-inventory` | `src/features/inventory/` | `inventoryService.js` | `consumables` | `appointments`, `services` (stock comprometido, D-10) |
 
 As specs `implementacao/` de cada módulo são as dos cards do Trello: os nomes de coleções/campos lá indicados podem estar desatualizados, prevalece `modelo-dados.md`.
 
@@ -23,14 +23,14 @@ As specs `implementacao/` de cada módulo são as dos cards do Trello: os nomes 
 - Spec: `04-backoffice-web/dashboard/implementacao/` (card #126)
 - Protótipo inicial: `04-backoffice-web/00-prototipos-iniciais/dashboard-e-calendario/`
 - Requisitos: RF-WEB05 (dashboard e alertas), RNF-WEB01
-- Pendentes: P-05 (limiares), P-06 (telemetria)
+- Decisões: D-11 (limiares editáveis neste módulo), D-12 (alerta = última leitura fora dos limiares)
 
 ## tickets (Grupo A)
 - Ecrãs: `04-backoffice-web/tickets/lista-tickets/`, `04-backoffice-web/tickets/detalhe-ticket/`
 - Spec: `04-backoffice-web/tickets/implementacao/` (card #124, **sem descrição**: o plano tem de propor o âmbito)
 - Requisitos: RF-WEB06 (triagem: Pendente → Em Análise → Respondido) · US07
 - Contexto (origem dos pedidos na app): `05-app-cliente/pedido-avaria-orcamento/`, `05-app-cliente/agendamento-manutencao/`
-- Pendentes: P-01, P-03 (fotos)
+- Decisões: D-07 (estados `pending`/`in_analysis`/`responded`), D-09 (fotos no Storage: placeholder até à P-08)
 
 ## agenda (Grupo A)
 - Ecrãs: `04-backoffice-web/agenda/calendario-geral/`, `04-backoffice-web/agenda/detalhe-do-dia/`, `04-backoffice-web/agenda/modal-novo-agendamento/`
@@ -38,13 +38,13 @@ As specs `implementacao/` de cada módulo são as dos cards do Trello: os nomes 
 - Protótipo inicial: `04-backoffice-web/00-prototipos-iniciais/dashboard-e-calendario/`
 - Requisitos: RF-WEB04 (agendamento e prevenção de conflitos) · US06
 - Diagramas: `02-arquitetura-e-dados/diagramas-sequencia/agendamento/`, `02-arquitetura-e-dados/diagrama-estados-servico/`
-- Pendentes: P-01, P-04
+- Decisões: D-07 (estados), D-10 (stock projetado e alerta de rutura)
 
 ## reports (Grupo A)
 - Spec: `04-backoffice-web/relatorios/implementacao/` (card #127, **sem descrição** e sem protótipo: o plano tem de propor o âmbito)
 - Requisitos: RF-WEB07 (auditoria e histórico), RF-WEB08 (geração de PDFs) · US10
 - Contexto: `05-app-cliente/historico-e-faturacao/`
-- Pendentes: P-03 (PDFs)
+- Decisões: D-09 (PDF em `appointments/{id}/report.pdf`: bloqueado até à P-08; gerar PDF exige uma dependência nova, a justificar no plano)
 
 ## clients (Grupo B)
 - Ecrãs: `04-backoffice-web/clientes-e-piscinas/lista-clientes/`, `.../modal-novo-cliente/`, `.../ficha-cliente/`, `.../detalhe-piscina/`
@@ -59,14 +59,14 @@ As specs `implementacao/` de cada módulo são as dos cards do Trello: os nomes 
 - Protótipo inicial: `04-backoffice-web/00-prototipos-iniciais/clientes-e-tecnicos/`
 - Requisitos: RF-WEB02 · US04
 - Diagramas: `02-arquitetura-e-dados/diagramas-sequencia/registo-gestao-tecnicos/`
-- Pendentes: P-02 (criação de contas)
+- Decisões: D-08 (criação de contas pelo admin: fluxo e alteração autorizada a `src/config/firebase.js`)
 
 ## services-catalog (Grupo B)
 - Ecrãs: `04-backoffice-web/servicos/lista-servicos/`, `04-backoffice-web/servicos/editor-servico/`
 - Spec: `04-backoffice-web/servicos/implementacao/` (card #130; usar `services`, não `services_catalog`)
 - Protótipo inicial: `04-backoffice-web/00-prototipos-iniciais/servicos-e-consumiveis/`
 - Requisitos: RF-WEB03 · US05
-- Pendentes: P-01 (tipo de serviço)
+- Decisões: D-07 (`type`: `maintenance`/`repair`/`commercial_survey`)
 
 ## inventory (Grupo B)
 - Ecrãs: `04-backoffice-web/inventario/lista-inventario/`, `04-backoffice-web/inventario/modal-editor-artigo/`
@@ -74,7 +74,7 @@ As specs `implementacao/` de cada módulo são as dos cards do Trello: os nomes 
 - Protótipo inicial: `04-backoffice-web/00-prototipos-iniciais/servicos-e-consumiveis/`
 - Requisitos: RF-WEB03 · US03, US09
 - Diagramas: `02-arquitetura-e-dados/diagramas-sequencia/catalogo-consumiveis-precos/`
-- Pendentes: P-04
+- Decisões: D-10 (físico, comprometido, projetado)
 
 ## Já implementado
 - **Autenticação e RBAC** (cards #81, #107): `04-backoffice-web/autenticacao/`. Só serve de referência; os ficheiros são partilhados.

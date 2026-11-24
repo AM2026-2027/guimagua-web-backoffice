@@ -1,6 +1,7 @@
 # Modelo de dados oficial — Cloud Firestore
 
 **Fonte de verdade** para coleções e campos, partilhada pelo Backoffice Web e pelas apps Android.
+Coleções: `users`, `clients`, `pools`, `services`, `consumables`, `appointments`, `tickets`, `pool_readings` e `settings` (nova, D-11).
 Base: diagrama de classes de domínio da app (`docs/02-arquitetura-e-dados/diagramas-classes-mobile/05-global/diagrama-01.puml`, card #112). Decisão D-02 em `docs/decisoes.md`.
 
 Prevalece sobre:
@@ -13,7 +14,14 @@ Legenda da coluna Origem:
 - **base**: campo do modelo Android, não renomear nem remover;
 - **proposto**: campo pedido pelos ecrãs/specs do backoffice, ainda a validar com a equipa Android. Ao usá-lo, assinalar no plano e no PR.
 
-Convenções: nomes em inglês `snake_case`; ids de documento gerados pelo Firestore (exceto `users`, onde o id é o `uid` do Auth); `created_at`/`updated_at` com `serverTimestamp()`; valores de enums conforme a pendente P-01.
+- **alterado**: campo do modelo Android renomeado por uma decisão; comunicar à equipa Android.
+
+Convenções:
+- nomes em inglês `snake_case`;
+- ids de documento gerados pelo Firestore, exceto em `users`, onde o id é o `uid` do Auth;
+- `created_at`/`updated_at` com `serverTimestamp()`;
+- **valores de enums em minúsculas `snake_case` (D-07)**;
+- ficheiros no Firebase Storage referenciados por **caminho**, não por URL (D-09).
 
 ---
 
@@ -23,7 +31,7 @@ Convenções: nomes em inglês `snake_case`; ids de documento gerados pelo Fires
 |---|---|---|---|
 | `email` | string | base | Igual ao do Firebase Auth |
 | `name` | string | base | |
-| `role` | enum | base | `admin`, `client`, `technician`, `commercial` (já em uso na `main`) |
+| `role` | enum | base | `admin`, `client`, `technician`, `commercial`. As contas de técnicos e comerciais são criadas pelo admin no módulo `team` (D-08) |
 | `specialties` | string[] | base | Aptidões/especialidades (ids de `services` ou tipologias) |
 | `fcm_token` | string? | base | Gerido pelas apps; o backoffice não altera |
 | `is_active` | boolean | base | Soft delete |
@@ -65,7 +73,7 @@ Convenções: nomes em inglês `snake_case`; ids de documento gerados pelo Fires
 | Campo | Tipo | Origem | Notas |
 |---|---|---|---|
 | `name` | string | base | |
-| `type` | enum | base | manutenção / reparação / vistoria comercial (`MAINTENANCE`, `REPAIR`, `COMMERCIAL_SURVEY`, formato final em P-01) |
+| `type` | enum | base | `maintenance` (manutenção), `repair` (reparação), `commercial_survey` (vistoria comercial) |
 | `default_duration_min` | number | base | Usar em vez de `estimated_duration_min` da spec antiga |
 | `checklist_template` | string[] | base | Ordem = ordem da checklist |
 | `is_active` | boolean | base | |
@@ -81,7 +89,7 @@ Convenções: nomes em inglês `snake_case`; ids de documento gerados pelo Fires
 | `name` | string | base | |
 | `unit` | string | base | L, kg, un… |
 | `stock_quantity` | number | base | Stock físico |
-| `projected_stock` | number | base | Stock projetado (cálculo em P-04) |
+| `projected_stock` | number | base | Stock projetado = físico − comprometido. Atualizado pelo serviço da agenda (D-10) |
 | `is_active` | boolean | base | Inativação segura (nunca apagar) |
 | `description` | string? | proposto | |
 | `unit_price` | number | proposto | Euros |
@@ -98,12 +106,12 @@ Convenções: nomes em inglês `snake_case`; ids de documento gerados pelo Fires
 | `service_id` | string | base | |
 | `date` | timestamp | base | Início previsto (apresentar em `Europe/Lisbon`) |
 | `checkin_timestamp` | timestamp? | base | Preenchido pela app |
-| `status` | enum | base | agendado / em curso / concluído / cancelado (`SCHEDULED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`, formato em P-01) |
+| `status` | enum | base | `scheduled` (agendado), `in_progress` (em curso), `completed` (concluído), `cancelled` (cancelado) |
 | `checklist_results` | map<string, boolean> | base | Preenchido pela app |
 | `notes` | string | base | |
 | `anomaly_reported` | boolean | base | |
-| `photo_drive_ids` | string[] | base | Ver P-03 |
-| `report_pdf_drive_link` | string? | base | Ver P-03 |
+| `photo_paths` | string[] | alterado (era `photo_drive_ids`, D-09) | Caminhos no Storage: `appointments/{id}/photos/…` ou `…/survey/…` |
+| `report_pdf_path` | string? | alterado (era `report_pdf_drive_link`, D-09) | `appointments/{id}/report.pdf`, gerado pelo backoffice (RF-WEB08) |
 | `consumables_used` | `{ consumable_id, quantity_used }[]` | proposto | `ConsumableUsage` embebido no diagrama, sem nome de campo definido |
 | `end_date` | timestamp? | proposto | Fim previsto; alternativa: `date + services.default_duration_min` |
 | `client_id` | string | proposto | Desnormalizado para filtros sem leituras extra |
@@ -119,11 +127,11 @@ Ciclo de vida: `docs/02-arquitetura-e-dados/diagrama-estados-servico/`. Regras d
 |---|---|---|---|
 | `client_id` | string | base | |
 | `pool_id` | string | base | |
-| `category` | string | base | avaria / orçamento / manutenção (valores em P-01) |
+| `category` | string | base | Minúsculas `snake_case`. Valores a fechar com a App Cliente no plano do módulo `tickets` (ex.: `breakdown`, `quote`, `maintenance`) |
 | `description` | string | base | |
-| `status` | enum | base | pendente / em análise / respondido (`PENDING`, `IN_ANALYSIS`, `RESPONDED`, formato em P-01) |
-| `priority` | string | base | |
-| `photo_drive_ids` | string[] | base | Fotos anexadas pelo cliente (ver P-03) |
+| `status` | enum | base | `pending` (pendente), `in_analysis` (em análise), `responded` (respondido) |
+| `priority` | string | base | Minúsculas `snake_case` (ex.: `low`, `normal`, `high`) |
+| `photo_paths` | string[] | alterado (era `photo_drive_ids`, D-09) | Fotos do cliente: `tickets/{id}/…` |
 | `created_at` | timestamp | base | |
 | `response_message` | string? | proposto | Resposta do gestor |
 | `responded_at`, `updated_at` | timestamp? | proposto | |
@@ -135,11 +143,27 @@ Ciclo de vida: `docs/02-arquitetura-e-dados/diagrama-estados-servico/`. Regras d
 |---|---|---|---|
 | `appointment_id` | string | base | |
 | `pool_id` | string | base | |
-| `ph_level` | number | base | Válido 6.8–8.2; alerta fora de 7.2–7.6 (parametrizável, P-05) |
+| `ph_level` | number | base | Válido 6.8–8.2; alerta fora dos limiares de `settings/alert_thresholds` (D-11, D-12) |
 | `chlorine_ppm` | number | base | Válido 0.5–3.0 |
 | `temperature_c` | number | base | Válido 0–45 |
 | `salinity_gl` | number? | base | |
 | `timestamp` | timestamp | base | |
+
+## `settings/alert_thresholds`: limiares de alerta (coleção nova, D-11)
+
+Documento único, editado pelo admin no módulo `dashboard`. Comunicar à equipa Android (a App Cliente usa os mesmos limiares nos alertas).
+
+| Campo | Tipo | Origem | Notas |
+|---|---|---|---|
+| `ph_min`, `ph_max` | number | novo (D-11) | Valores iniciais 7.2 e 7.6 (RF-WEB05) |
+| `chlorine_min_ppm`, `chlorine_max_ppm` | number | novo (D-11) | Têm de estar dentro do intervalo válido 0.5–3.0 |
+| `temperature_min_c`, `temperature_max_c` | number | novo (D-11) | Têm de estar dentro do intervalo válido 0–45 |
+| `updated_at` | timestamp | novo (D-11) | |
+| `updated_by` | string | novo (D-11) | `uid` do admin |
+
+## Ficheiros (Firebase Storage, D-09)
+
+Caminhos: `tickets/{ticketId}/…`, `appointments/{appointmentId}/photos/…`, `appointments/{appointmentId}/survey/…`, `appointments/{appointmentId}/report.pdf`. Exige o plano Blaze (P-08).
 
 ## Relações
 

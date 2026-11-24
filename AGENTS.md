@@ -9,6 +9,7 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
 - **Ecossistema**: este **Backoffice Web** (gestão interna, acesso só para `admin`) + **App Cliente** e **App Guimágua** (perfis técnico e comercial), ambas Android/Kotlin noutro repositório. Todos partilham o **mesmo projeto Firebase** (Auth + Cloud Firestore).
 - **Não existe portal web para clientes.** Não implementar landing page, registo de clientes nem áreas de cliente na web. O material em `docs/_fora-de-ambito/` é só referência visual.
 - Documentação: `docs/README.md` (índice), `docs/modulos.md` (mapa módulo → requisitos, protótipos, specs), `docs/modelo-dados.md` (modelo de dados oficial), `docs/decisoes.md` (decisões tomadas e pendentes).
+- **Precedência:** `AGENTS.md` > `docs/decisoes.md` > `docs/modelo-dados.md` > specs dos cards e protótipos. Os cards do Trello são anteriores às decisões; quando contradizem uma decisão (ex.: a spec do `team` diz que as contas se criam na consola), prevalece a decisão.
 
 ## 2. O que já existe na `main` (ler antes de propor)
 
@@ -29,7 +30,7 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
 
 **Fluxo Git:** `feat/<a|b>-<modulo>` → PR para `grupo-<a|b>` → aprovação → PR de `grupo-<a|b>` para `main`.
 
-- **Nunca trabalhar diretamente** em `main`, `grupo-a` ou `grupo-b`, nem fazer push para esses branches; só entram alterações por PR.
+- **Nunca trabalhar diretamente** em `main`, `grupo-a` ou `grupo-b`, nem fazer push para esses branches; só entram alterações por PR. O GitHub não está a impor esta regra (plano gratuito, G-02), por isso depende de todos a cumprirem.
 - **Criar um branch de funcionalidade:** a partir do branch do grupo atualizado: `git checkout grupo-<a|b>` → `git pull` → `git checkout -b feat/<a|b>-<modulo>` (ex.: `feat/b-clients-crud`).
   - Um módulo ou ecrã por PR.
   - Branches curtos: idealmente fazer merge em menos de uma semana.
@@ -40,14 +41,14 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
 - **Ler outros módulos:** um módulo pode ler coleções de outros módulos a partir do **seu próprio** serviço. Nunca editar o serviço ou a pasta de outro grupo.
 - **Ficheiros partilhados (não alterar sem autorização explícita):**
   - código: `src/App.jsx`, `src/main.jsx`, `src/config/firebase.js`, `src/constants/*`, `src/layout/*`, `src/shared/*`, `src/styles/base.css`, `src/features/auth/*`;
-  - configuração: `index.html`, `vite.config.js`, `eslint.config.js`, `package.json`, `package-lock.json`, `firestore.rules`, `firebase.json`, `.github/*`;
+  - configuração: `index.html`, `vite.config.js`, `eslint.config.js`, `package.json`, `package-lock.json`, `firestore.rules`, `storage.rules`, `firebase.json`, `.github/*`;
   - agentes e documentação: `AGENTS.md`, `CLAUDE.md`, `.claude/*`, `.agent/*`, `docs/modelo-dados.md`, `docs/decisoes.md`.
 
   Se a tarefa exigir uma dependência nova ou alterar um ficheiro partilhado: **pára e justifica antes de mexer**.
 
 ## 4. Modelo de dados
 
-- A fonte de verdade é `docs/modelo-dados.md`, alinhado com a App Android: `users`, `clients`, `pools`, `services`, `consumables`, `appointments`, `tickets`, `pool_readings`.
+- A fonte de verdade é `docs/modelo-dados.md`, alinhado com a App Android: `users`, `clients`, `pools`, `services`, `consumables`, `appointments`, `tickets`, `pool_readings` e `settings` (limiares de alerta).
 - O modelo de dados **prevalece** sobre nomes antigos que aparecem nas specs dos cards (`agenda_events`, `services_catalog`, `inventory` como coleção, dados da piscina dentro de `clients`, nomes em português do dicionário de dados).
 - As **regras de validação** (regex de email, telefone +351, NIF, intervalos de pH, cloro e temperatura, matrícula) vêm do dicionário de dados: `docs/02-arquitetura-e-dados/dicionario-dados/`.
 - Campos: inglês, `snake_case`. Campos novos só podem ser **acrescentados** (nunca renomear nem remover campos existentes) e têm de aparecer no plano marcados como "campo novo — validar com a equipa Android".
@@ -63,18 +64,19 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
    - ESLint 10 (`eslint.config.js`).
 
    Qualquer mudança à stack tem de ser justificada antes.
-2. **Plano Firebase Spark (gratuito):** há limites diários de leituras e escritas e não há Cloud Functions.
+2. **Quotas gratuitas do Firebase:** o projeto está no plano Spark. A passagem a Blaze está pendente (P-08) e é só por causa do Storage. Em qualquer dos planos, o código tem de caber nas quotas gratuitas e **não se usam Cloud Functions**.
    - Listas pequenas (ex.: `services`, `users`) podem ser carregadas uma vez e filtradas e ordenadas no cliente, sem pedidos repetidos.
    - Listas que crescem (`clients`, `consumables`, histórico de `appointments` e `tickets`) usam paginação por cursor (`limit` + `startAfter`), conforme o RNF-WEB02, e `where` quando reduz leituras.
    - Nunca criar subscrições em ciclo (dependências de `useEffect` estáveis; limpar sempre o `onSnapshot`).
 3. **Datas:** fuso `Europe/Lisbon`, formatação PT-PT.
 4. **Idioma:** código 100% em inglês (ficheiros, componentes, hooks, serviços, variáveis, props, campos Firestore). Comentários em PT-PT a explicar regras de negócio, validações e limpeza de efeitos. Interface em PT-PT: desktop-first, funcional em ecrãs menores e acessível (labels associados, `aria-label`, foco visível, contraste adequado).
-5. **Valores de enums** (estados, roles): guardar no Firestore o valor técnico e mostrar o rótulo PT-PT na UI através de um mapa de constantes. O formato dos valores está em `docs/decisoes.md`.
+5. **Valores de enums** (estados, roles, tipos): guardar no Firestore em **minúsculas `snake_case`** (ex.: `scheduled`, `in_analysis`, `commercial_survey`) e mostrar o rótulo PT-PT na UI através de um mapa de constantes no `utils/` do módulo (D-07).
 6. **Segurança:**
    - Nunca pedir para colar chaves, tokens ou passwords no chat; nunca ler nem commitar `.env.local`.
    - Nunca contornar `RequireAuth` ou `RequireRole`.
    - Em `team`, o administrador autenticado não pode alterar o próprio `role` nem desativar a própria conta.
-   - Não criar contas no Firebase Auth nem fazer upload de ficheiros (fotos, PDFs) a partir do backoffice sem a decisão correspondente estar fechada em `docs/decisoes.md`.
+   - **Contas de técnicos e comerciais:** só no módulo `team`, seguindo o fluxo da D-08 (instância secundária do Auth, password temporária nunca mostrada, email de definição de password). Em mais nenhum sítio se criam contas.
+   - **Ficheiros (fotos, PDFs):** só no Firebase Storage, nos caminhos da D-09; nunca no Google Drive. Enquanto a P-08 (plano Blaze) não estiver feita, não implementar upload nem download: mostrar um placeholder.
 7. **Identidade visual:**
    - Usar as classes `bg-primary`, `text-primary`, `hover:bg-primary-dark` e `bg-background` em vez de cores hexadecimais soltas: primária `#0B4F6C`, primária escura `#083B51`, fundo `#F4F7F9`, cartões brancos com borda subtil (`border-slate-200`). A fonte de verdade é `src/styles/base.css`.
    - Reutilizar `LoadingSpinner`, `ErrorAlert` e `MessagePage`.

@@ -1,75 +1,67 @@
 # Decisões do projeto
 
-Registo de decisões tomadas e pendentes. Quando um agente encontrar uma pendente relevante para a tarefa, deve indicá-la no plano, aplicar a proposta só se for aprovada e, depois de decidida, atualizar este ficheiro (ficheiro partilhado: alterar só com autorização).
+Registo das decisões tomadas e das que estão pendentes. Quando um agente encontrar uma pendente relevante para a tarefa, deve indicá-la no plano e não avançar nessa parte sem aprovação.
+Este ficheiro é partilhado: só se altera com autorização, via PR `chore/*` para a `main`.
 
 ## Tomadas
 
 | Id | Data | Decisão |
 |---|---|---|
 | D-01 | 24/11/2026 | A web tem **apenas o backoffice de gestão** (role `admin`). O portal web do cliente, a landing page e o catálogo público foram abandonados; o material fica em `docs/_fora-de-ambito/` só como referência. |
-| D-02 | 24/11/2026 | O **modelo de dados oficial** é o da App Android (`users`, `clients`, `pools`, `services`, `consumables`, `appointments`, `tickets`, `pool_readings`), descrito em `docs/modelo-dados.md`. As specs do backoffice adaptam-se a ele. |
+| D-02 | 24/11/2026 | O **modelo de dados oficial** é o da App Android, descrito em `docs/modelo-dados.md`. As specs do backoffice adaptam-se a ele. |
 | D-03 | 24/11/2026 | **Cores:** primária `#0B4F6C`, primária escura `#083B51`, fundo `#F4F7F9`. Aplicadas em `src/styles/base.css` (antes: `#0F4C81` / `#0B3A63` / `#F8FAFC`). |
 | D-04 | 24/11/2026 | As regras dos agentes vivem em `AGENTS.md` (partilhado por Gemini, Claude Code e outros). `CLAUDE.md` importa-o; `.agent/skills/guimagua-web/SKILL.md` só aponta para ele. |
-| D-05 | 24/11/2026 | **Leituras no plano Spark:** listas pequenas são carregadas uma vez e filtradas no cliente; listas que crescem usam paginação por cursor (RNF-WEB02). |
-| D-06 | 24/11/2026 | **Fluxo Git:** mantém-se `feat/<a\|b>-*` → `grupo-<a\|b>` → `main`, com três regras novas: sincronizar os branches de grupo com a `main` depois de cada merge; alterações partilhadas via `chore/*` direto para a `main`; CI (lint + build) obrigatória em todos os PR. |
+| D-05 | 24/11/2026 | **Leituras no Firestore:** listas pequenas são carregadas uma vez e filtradas no cliente; listas que crescem usam paginação por cursor (RNF-WEB02). |
+| D-06 | 24/11/2026 | **Fluxo Git:** `feat/<a\|b>-*` → `grupo-<a\|b>` → `main`. Os branches de grupo são sincronizados com a `main` depois de cada merge; as alterações partilhadas entram via `chore/*` direto para a `main`; a CI (lint + build) é obrigatória em todos os PR. |
+| D-07 | 24/11/2026 | **Enums em minúsculas `snake_case`** no Firestore, coerentes com os roles já em uso. Valores em `docs/modelo-dados.md`. A app Android mapeia com `@PropertyName` ou um conversor. A UI mostra rótulos PT-PT a partir de um mapa de constantes. |
+| D-08 | 24/11/2026 | **Contas de técnicos e comerciais** são criadas **manualmente pelo admin** no backoffice, no módulo `team` (aba "Equipa & Técnicos"). O fluxo técnico está descrito mais abaixo. As contas de clientes continuam a ser criadas pela App Cliente. |
+| D-09 | 24/11/2026 | **Fotografias e PDFs ficam apenas no Firebase Storage.** O Google Drive com Service Account (RNF-GLB04, `DriveStorageRepository`) foi abandonado; comunicar à equipa Android. **Requer o plano Blaze**: ver P-08. |
+| D-10 | 24/11/2026 | **Stock** (antiga P-04): comprometido = soma de `services.base_consumables` dos `appointments` com estado `scheduled`/`in_progress`, calculado no cliente; projetado = físico − comprometido; o serviço da agenda atualiza `consumables.projected_stock` ao criar ou cancelar um agendamento; a app abate o stock físico ao concluir a intervenção, numa transação/batch (RNF-TEC02). |
+| D-11 | 24/11/2026 | **Limiares de alerta** (antiga P-05): documento único `settings/alert_thresholds` (coleção nova `settings`), editável pelo admin no módulo `dashboard`. Campos em `docs/modelo-dados.md`. |
+| D-12 | 24/11/2026 | **Telemetria** (antiga P-06): enquanto não houver integração com sensores, um alerta é a última `pool_reading` de cada piscina fora dos limiares de `settings/alert_thresholds`. |
+| D-13 | 24/11/2026 | **Regras de segurança** (antiga P-07): `firestore.rules` e `storage.rules` são ficheiros partilhados, alterados só via PR revisto por um elemento de cada equipa (web e Android). |
 
-## Ações pendentes no GitHub (não se resolvem no código)
+### D-08: fluxo de criação de contas no módulo `team`
 
-### G-01: Nomes dos branches de grupo
-No GitHub os branches chamam-se `Grupo-A` e `Grupo-B`; os branches locais e a documentação usam `grupo-a` e `grupo-b`. No Windows o Git não distingue maiúsculas e esconde o problema, mas um `git push` a partir de `grupo-a` pode criar no GitHub um segundo branch `grupo-a`, e a CI ou outros sistemas operativos tratam-nos como branches diferentes.
+1. O admin preenche um formulário com nome, email, telefone, role (`technician` ou `commercial`), especialidades e viatura.
+2. A conta é criada numa **instância secundária** do Firebase, para não terminar a sessão do admin:
+   - em `src/config/firebase.js`: `initializeApp(firebaseConfig, 'secondary')` + `initializeAuth(secondaryApp, { persistence: inMemoryPersistence })`, exportado como `secondaryAuth`;
+   - esta alteração ao ficheiro partilhado fica **autorizada por esta decisão**, no PR do módulo `team`, com revisão de um elemento de cada grupo.
+3. Em `userService.js`, uma função `createStaffAccount()`:
+   - `createUserWithEmailAndPassword(secondaryAuth, email, <password temporária aleatória>)`, com a password gerada com `crypto.getRandomValues` e nunca mostrada a ninguém;
+   - `setDoc(doc(db, 'users', uid), { name, email, role, phone, specialties, vehicle_plate, is_active: true, created_at: serverTimestamp(), updated_at: serverTimestamp() })`;
+   - `signOut(secondaryAuth)`;
+   - `sendPasswordResetEmail(auth, email)`, para o colaborador definir a sua própria password. Equivale a "disparar as credenciais" do RF-WEB02.
+4. **Erros:**
+   - se a conta Auth for criada mas o documento falhar, mostrar o erro e permitir repetir só a gravação do documento (guardar o `uid` no estado);
+   - sem o Admin SDK não é possível apagar contas Auth a partir do browser: retirar o acesso = `is_active: false`, que o `AuthProvider` já trata.
+5. O role fica em `users/{uid}.role`, não em Custom Claims, que exigem o Admin SDK. Isto diverge do RNF-GLB01, e o `firestore.rules` usa o documento `users/{uid}`.
+6. Continua a valer a regra de que o admin autenticado não pode alterar o próprio role nem desativar a própria conta.
 
-**Ação:** renomear no GitHub (Settings → Branches) para `grupo-a` e `grupo-b`. Depois, cada pessoa corre `git fetch --prune`.
+### D-09: organização do Firebase Storage
 
-### G-02: Proteger os branches
-O commit "Atualização SKILL agente" entrou na `main` sem PR, o que mostra que a `main` não está protegida.
+| Ficheiro | Caminho no Storage | Quem escreve |
+|---|---|---|
+| Fotos de pedidos | `tickets/{ticketId}/{nomeFicheiro}` | App Cliente |
+| Fotos da intervenção | `appointments/{appointmentId}/photos/{nomeFicheiro}` | App Guimágua (técnico) |
+| Fotos de vistoria comercial | `appointments/{appointmentId}/survey/{nomeFicheiro}` | App Guimágua (comercial) |
+| Relatório PDF | `appointments/{appointmentId}/report.pdf` | Backoffice (RF-WEB08) |
 
-**Ação:** em Settings → Branches (ou Rules), proteger `main`, `grupo-a` e `grupo-b` com:
-- PR obrigatório;
-- pelo menos 1 aprovação;
-- verificação `CI / lint-build` obrigatória;
-- push direto bloqueado.
-
-### G-03: Atualizar os branches de grupo
-Os branches de grupo no GitHub estão atrasados em relação à `main` (falta-lhes o merge do PR #4 e a atualização da skill). Além disso, o `grupo-b` local tem 2 commits que não foram enviados.
-
-**Ação:** depois do PR `chore/claude-code-setup` entrar na `main`, abrir os PR `main` → `grupo-a` e `main` → `grupo-b`.
+- O Firestore guarda os **caminhos** (`photo_paths`, `report_pdf_path`), não URLs. O backoffice obtém o URL com `getDownloadURL` no serviço do módulo.
+- As fotos são comprimidas no dispositivo antes do upload (máx. 1,5 MB, RNF-COM01).
+- O `getStorage` é acrescentado a `src/config/firebase.js` no primeiro módulo que precisar dele (`tickets` ou `reports`), com a mesma regra de revisão da D-08.
 
 ## Pendentes
 
-### P-01: Formato dos valores de enums no Firestore
-- **Problema:** os roles já estão gravados em minúsculas (`admin`, `technician`…), mas os enums Kotlin do diagrama estão em maiúsculas (`SCHEDULED`, `PENDING`, `MAINTENANCE`). Por omissão, o Firestore grava o nome do enum Kotlin tal como está.
-- **Proposta:** todos os valores em minúsculas `snake_case` (`scheduled`, `in_progress`, `completed`, `cancelled`; `pending`, `in_analysis`, `responded`; `maintenance`, `repair`, `commercial_survey`), coerentes com os roles já em produção. A app Android mapeia com `@PropertyName` ou um conversor. Rótulos PT-PT num mapa de constantes no módulo.
-- **Decidir com:** equipa Android.
+### P-08: Passar o projeto Firebase para o plano Blaze
+- **Porquê:** o Cloud Storage for Firebase deixou de estar disponível no plano Spark. Num projeto Spark não há acesso a nenhum bucket e as chamadas à API devolvem erros 402/403. O uso gratuito mantém-se no plano Blaze (fonte: Firebase, "FAQs about changes to Cloud Storage for Firebase pricing and default buckets", firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024).
+- **Proposta:** o responsável do projeto associa uma conta de faturação, passa o projeto para Blaze e cria um **alerta de orçamento** baixo (ex.: 1 €) na Google Cloud.
+- **Até lá:** nenhum módulo faz upload nem leitura de ficheiros; os ecrãs mostram um placeholder. As regras de poupança de leituras e escritas continuam a aplicar-se.
 
-### P-02: Criação de contas de técnicos e comerciais (RF-WEB02)
-- **Problema:** o RF-WEB02 pede que o backoffice crie automaticamente a conta no Firebase Auth e envie as credenciais. Com o SDK cliente, `createUserWithEmailAndPassword` termina a sessão do admin. As Cloud Functions e o Admin SDK (necessário também para Custom Claims) não existem no plano Spark.
-- **Opções:**
-  - (a) Criar a conta numa segunda instância da app Firebase no browser, sem afetar a sessão do admin; gravar `users/{uid}`; enviar `sendPasswordResetEmail` para o colaborador definir a password.
-  - (b) Passar ao plano Blaze e usar uma Cloud Function com o Admin SDK.
-  - (c) Criação manual na consola.
-- **Proposta:** (a). O role fica em `users/{uid}.role`, como já está na `main`. Nota: isto diverge do RNF-GLB01, que fala em Custom Claims.
+## Ações no GitHub
 
-### P-03: Armazenamento de fotografias e PDFs
-- **Problema:** o RNF-GLB04 e o diagrama de repositórios usam Google Drive com Service Account. Uma Service Account não pode estar no browser, e no plano Spark não há backend para a usar. O setup (#104/#120) fala em Firebase Storage. O backoffice precisa de mostrar as fotos dos tickets (#78) e de gerar PDFs de intervenção (RF-WEB08).
-- **Opções:** Firebase Storage com regras por role; backend próprio (Blaze/Cloud Run) para o Drive; adiar as fotos no backoffice.
-- **Até decidir:** o backoffice não faz upload; mostra apenas a contagem de fotos ou um placeholder.
-
-### P-04: Stock comprometido e projetado
-- **Problema:** o ecrã de inventário (#72) mostra stock físico, comprometido e projetado. O modelo só tem `stock_quantity` e `projected_stock`.
-- **Proposta:**
-  - comprometido = soma de `services.base_consumables` dos `appointments` com estado agendado/em curso, calculado no cliente;
-  - projetado = físico − comprometido;
-  - `projected_stock` atualizado no serviço da agenda ao criar ou cancelar um agendamento;
-  - o abate do stock físico é feito pela app ao concluir a intervenção, numa transação/batch (RNF-TEC02).
-
-### P-05: Limiares de alerta parametrizáveis (RF-WEB05)
-- **Problema:** os limiares (ex.: pH 7.2–7.6) devem ser configuráveis, mas não há nenhuma coleção prevista para isso.
-- **Proposta:** documento único `settings/alert_thresholds` (coleção nova, a validar com a equipa Android). Até lá, constantes no módulo do dashboard.
-
-### P-06: Origem da "telemetria IoT"
-- **Problema:** o dashboard (#63) e a App Cliente falam em telemetria em tempo real e exceções IoT, mas o modelo só tem `pool_readings`, registadas pelos técnicos.
-- **Proposta:** tratar como alerta a última `pool_reading` fora dos limiares até existir integração com sensores.
-
-### P-07: Dono do `firestore.rules`
-- **Problema:** as regras RBAC (RNF-GLB02) afetam a web e as apps.
-- **Proposta:** ficheiro partilhado, alterado só via PR revisto por um elemento de cada equipa.
+| Id | Estado | Ação |
+|---|---|---|
+| G-01 | ✅ Feito | Branches de grupo renomeados para `grupo-a` e `grupo-b`. Cada pessoa deve correr `git fetch --prune` e confirmar que o branch local segue `origin/grupo-a` ou `origin/grupo-b`. |
+| G-02 | ⚠️ Indisponível | A proteção de branches em repositórios privados de organizações exige um plano pago do GitHub. Mitigação: (1) regra de equipa de que só se entra por PR com a CI verde; (2) as regras `deny` do `.claude/settings.json` bloqueiam o push do Claude Code para `main` e `grupo-*`; (3) vale a pena confirmar se o docente pode obter o GitHub Team gratuito para a organização via GitHub Education. |
+| G-03 | ✅ Feito | `grupo-a` e `grupo-b` sincronizados com a `main`. |
