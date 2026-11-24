@@ -3,10 +3,14 @@ import {
   signOut,
   sendPasswordResetEmail,
   onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
 } from 'firebase/auth'
 import { auth } from '../config/firebase'
 
-export async function loginWithEmail(email, password) {
+export async function loginWithEmail(email, password, rememberSession = true) {
+  await setPersistence(auth, rememberSession ? browserLocalPersistence : browserSessionPersistence)
   const credential = await signInWithEmailAndPassword(auth, email, password)
   return credential.user
 }

@@ -8,11 +8,11 @@ export default function MainLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-background">
+    <div className="flex min-h-screen flex-col bg-[#f7f8fc] md:flex-row">
       <Sidebar open={menuOpen} onNavigate={() => setMenuOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((open) => !open)} />
-        <main className="flex-1 p-6">
+        <main className="w-full flex-1 p-3 sm:p-4 lg:p-5">
           <Outlet />
         </main>
         <Footer />
