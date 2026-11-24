@@ -4,7 +4,7 @@
 
 - **Comandos do projeto:**
   - `/novo-modulo <modulo>`: lê a documentação e o código, confirma o branch, apresenta o plano e pára.
-  - `/fechar-modulo`: prova o trabalho (lint, build, fronteiras); faz commit, push e PR para o grupo; faz merge quando houver aprovação e CI verde. Pode ser corrido de novo para ver o estado do PR.
+  - `/fechar-modulo`: prova o trabalho (lint, build, fronteiras); faz commit, push e PR para o grupo; faz merge quando houver aprovação e CI verde (nos PR do product owner basta a CI verde, D-15). Pode ser corrido de novo para ver o estado do PR.
   - `/publicar grupo-a|grupo-b`: para o responsável do grupo. Faz o PR do grupo para a `main`, sincroniza os grupos e faz o deploy de produção (Firebase Hosting).
 - **Pré-requisitos na máquina:**
   - GitHub CLI: `winget install GitHub.cli` e depois `gh auth login`.

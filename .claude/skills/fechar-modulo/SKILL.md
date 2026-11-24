@@ -60,12 +60,12 @@ Depois, apresenta:
 
 - `git push -u origin <branch-atual>`, só se o branch atual for `feat/*`.
 - `gh pr create --base grupo-<a|b> --head <branch-atual> --title "feat(<modulo>): …" --body-file <ficheiro temporário com a descrição do passo 5>`.
-- Mostra o URL do PR e pede ao utilizador para pedir revisão a um colega do grupo.
+- Mostra o URL do PR e pede ao utilizador para pedir revisão a um colega do grupo (não se aplica aos PR do product owner, D-15).
 
 ## 8. Estado do PR
 
 - `gh pr checks <n>`: código de saída 0 = CI verde, 8 = ainda a correr, outro = falhou.
-- `gh pr view <n> --json author,reviews,mergeable,state,url`. Como o GitHub não exige revisões neste repositório (G-02), conta tu as aprovações: tem de haver **pelo menos uma review `APPROVED` de alguém que não seja o autor do PR** e nenhuma `CHANGES_REQUESTED` posterior dessa pessoa.
+- `gh pr view <n> --json author,reviews,mergeable,state,url`. Como o GitHub não exige revisões neste repositório (G-02), conta tu as aprovações: tem de haver **pelo menos uma review `APPROVED` de alguém que não seja o autor do PR** e nenhuma `CHANGES_REQUESTED` posterior dessa pessoa. Exceção (D-15): se o autor do PR for o product owner (`ldcc9298-arch`), não é precisa aprovação; basta a CI verde e não haver conflitos.
 - Resultados possíveis:
   - CI a correr ou sem aprovação: diz exatamente o que falta e **termina** ("corre `/fechar-modulo` outra vez quando houver aprovação").
   - CI falhou: mostra o erro e propõe a correção (novo commit e push, com confirmação).
