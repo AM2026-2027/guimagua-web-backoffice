@@ -1,5 +1,5 @@
-import StatusBadge from './StatusBadge'
-import { CARD_CLASS, LINK_BUTTON, LINK_DANGER_BUTTON } from './styles'
+import StatusBadge from '../../../shared/components/StatusBadge'
+import { CARD_CLASS, LINK_BUTTON, LINK_DANGER_BUTTON } from '../../../shared/components/uiClasses'
 import { formatDate, formatVolume, poolTypeLabel, treatmentTypeLabel } from '../utils/labels'
 import { poolDisplayName } from '../utils/poolForm'
 

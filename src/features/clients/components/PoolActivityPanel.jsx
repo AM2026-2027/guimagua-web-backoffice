@@ -1,6 +1,6 @@
 import LoadingSpinner from '../../../shared/components/LoadingSpinner'
 import ErrorAlert from '../../../shared/components/ErrorAlert'
-import { CARD_CLASS } from './styles'
+import { CARD_CLASS } from '../../../shared/components/uiClasses'
 import { appointmentStatusLabel, formatDateTime } from '../utils/labels'
 import { splitAppointments } from '../utils/poolForm'
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import ErrorAlert from '../../../shared/components/ErrorAlert'
+import ErrorAlert from './ErrorAlert'
 import Modal from './Modal'
-import { DANGER_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from './styles'
+import { DANGER_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON } from './uiClasses'
 
 /** Confirmação explícita antes de desativar/reativar. `onConfirm` devolve true/false. */
 export default function ConfirmDialog({
