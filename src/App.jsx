@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
+import { Routes, Route, Navigate } from 'react-router'
 import AuthProvider from './features/auth/context/AuthProvider'
 import { useAuth } from './features/auth/hooks/useAuth'
 import RequireAuth from './features/auth/components/RequireAuth'

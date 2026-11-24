@@ -1,0 +1,195 @@
+@startuml
+title Diagrama de Classes (Modelos de Dados) - Guimágua Smart Pool
+
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam nodesep 70
+skinparam ranksep 65
+skinparam shadowing false
+skinparam roundcorner 8
+
+skinparam class {
+    BackgroundColor #F8FAFC
+    BorderColor #0F4C81
+    HeaderBackgroundColor #0F4C81
+    HeaderFontColor #FFFFFF
+    AttributeFontColor #1E293B
+}
+
+skinparam enum {
+    BackgroundColor #EFF6FF
+    BorderColor #3B82F6
+    HeaderBackgroundColor #3B82F6
+    HeaderFontColor #FFFFFF
+}
+
+' ==========================================
+' ENUMS (Controlo de Perfis e Estados)
+' ==========================================
+enum UserRole {
+    ADMIN
+    CLIENT
+    TECHNICIAN
+    COMMERCIAL
+}
+
+enum ServiceType {
+    MAINTENANCE
+    REPAIR
+    COMMERCIAL_SURVEY
+}
+
+enum AppointmentStatus {
+    SCHEDULED
+    IN_PROGRESS
+    COMPLETED
+    CANCELLED
+}
+
+enum TicketStatus {
+    PENDING
+    IN_ANALYSIS
+    RESPONDED
+}
+
+' ==========================================
+' COLEÇÕES FIRESTORE (8 Data Classes Base)
+' ==========================================
+class User <<Collection: users>> {
+    +id: String
+    +email: String
+    +name: String
+    +role: UserRole
+    +specialties: List<String>
+    +fcm_token: String?
+    +is_active: Boolean
+    --
+    +hasRole(target: UserRole): Boolean
+    +canPerformService(skill: String): Boolean
+}
+
+class Client <<Collection: clients>> {
+    +id: String
+    +user_id: String
+    +name: String
+    +email: String
+    +phone: String
+    +address: String
+    +is_active: Boolean
+    --
+    +hasValidContact(): Boolean
+}
+
+class Pool <<Collection: pools>> {
+    +id: String
+    +client_id: String
+    +local_address: String
+    +dimensions: String
+    +volume_m3: Double
+    +treatment_type: String
+    +equipment: List<String>
+    --
+    +hasInstalledEquipment(name: String): Boolean
+}
+
+class Ticket <<Collection: tickets>> {
+    +id: String
+    +client_id: String
+    +pool_id: String
+    +category: String
+    +description: String
+    +status: TicketStatus
+    +priority: String
+    +photo_drive_ids: List<String>
+    +created_at: Timestamp
+    --
+    +isUrgent(): Boolean
+    +canBeEdited(): Boolean
+}
+
+class Service <<Collection: services>> {
+    +id: String
+    +name: String
+    +type: ServiceType
+    +default_duration_min: Int
+    +checklist_template: List<String>
+    +is_active: Boolean
+    --
+    +isCommercialSurvey(): Boolean
+}
+
+class Consumable <<Collection: consumables>> {
+    +id: String
+    +name: String
+    +unit: String
+    +stock_quantity: Int
+    +projected_stock: Int
+    +is_active: Boolean
+    --
+    +hasSufficientStock(qty: Int): Boolean
+    +isBelowThreshold(min: Int): Boolean
+}
+
+class Appointment <<Collection: appointments>> {
+    +id: String
+    +pool_id: String
+    +tech_id: String
+    +service_id: String
+    +date: Timestamp
+    +checkin_timestamp: Timestamp?
+    +status: AppointmentStatus
+    +checklist_results: Map<String, Boolean>
+    +notes: String
+    +anomaly_reported: Boolean
+    +photo_drive_ids: List<String>
+    +report_pdf_drive_link: String?
+    --
+    +canCheckIn(): Boolean
+    +isChecklistComplete(): Boolean
+    +requiresBudgetAlert(): Boolean
+}
+
+class PoolReading <<Collection: pool_readings>> {
+    +id: String
+    +appointment_id: String
+    +pool_id: String
+    +ph_level: Double
+    +chlorine_ppm: Double
+    +temperature_c: Double
+    +salinity_gl: Double?
+    +timestamp: Timestamp
+    --
+    +isWaterBalanced(minPh: Double, maxPh: Double): Boolean
+}
+
+' Classe Embutida no Documento Appointment (Abate de Stock)
+class ConsumableUsage <<Embedded>> {
+    +consumable_id: String
+    +quantity_used: Int
+}
+
+' ==========================================
+' RELACIONAMENTOS E CARDINALIDADES
+' ==========================================
+User "1" -- "0..1" Client : autentica >
+User "1" -- "0..*" Appointment : executa >
+
+Client "1" -- "0..*" Pool : possui >
+Client "1" -- "0..*" Ticket : submete >
+
+Pool "1" -- "0..*" Ticket : refere-se a <
+Pool "1" -- "0..*" Appointment : recebe >
+
+Service "1" -- "0..*" Appointment : define tipologia >
+Service "0..*" -- "0..*" Consumable : prevê base >
+
+Appointment "1" -- "0..*" PoolReading : regista >
+Appointment "1" -- "0..*" ConsumableUsage : abate >
+Consumable "1" -- "0..*" ConsumableUsage : referencia <
+
+' Ligações aos Enums (Apenas visuais/tipagem)
+User ..> UserRole
+Service ..> ServiceType
+Appointment ..> AppointmentStatus
+Ticket ..> TicketStatus
+@enduml

@@ -1,0 +1,131 @@
+@startuml
+allowmixing
+title Diagrama de Classes (Camada de Repositórios e Serviços) - Guimágua Smart Pool
+
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam nodesep 65
+skinparam ranksep 65
+skinparam shadowing false
+skinparam roundcorner 8
+
+skinparam class {
+    BackgroundColor #F8FAFC
+    BorderColor #0F4C81
+    HeaderBackgroundColor #0F4C81
+    HeaderFontColor #FFFFFF
+    AttributeFontColor #1E293B
+}
+
+skinparam cloud {
+    BackgroundColor #EFF6FF
+    BorderColor #2563EB
+    FontColor #1E3A8A
+}
+
+skinparam note {
+    BackgroundColor #FEFCE8
+    BorderColor #CA8A04
+    FontColor #713F12
+}
+
+' ==========================================
+' CAMADA DE REPOSITÓRIOS (DATA LAYER)
+' ==========================================
+class AuthRepository <<Repository>> {
+    - auth : FirebaseAuth
+    - messaging : FirebaseMessaging
+    - db : FirebaseFirestore
+    .. Leitura (Read) ..
+    + getCurrentUserId() : String?
+    + isUserLoggedIn() : Boolean
+    + suspend getCurrentUserRole() : Result<UserRole>
+    + suspend getCurrentUserProfile() : Result<User>
+    .. Escrita (Write) ..
+    + suspend loginUser(email: String, password: String) : Result<User>
+    + suspend sendPasswordReset(email: String) : Result<Unit>
+    + suspend syncFcmToken(userId: String) : Result<Unit>
+    + logout() : Unit
+}
+
+class FirestoreRepository <<Repository>> {
+    - db : FirebaseFirestore
+    .. Leitura & Tempo Real (Read) ..
+    + suspend getDailyAppointments(techId: String, date: Timestamp) : Result<List<Appointment>>
+    + suspend getClientPools(clientId: String) : Result<List<Pool>>
+    + observePoolTelemetry(poolId: String) : Flow<PoolReading?>
+    + suspend getClientReports(poolId: String) : Result<List<Appointment>>
+    + suspend getConsumables() : Result<List<Consumable>>
+    + suspend getServiceCatalog() : Result<List<Service>>
+    .. Escrita & Transações (Write) ..
+    + suspend registerCheckIn(appointmentId: String, timestamp: Timestamp) : Result<Unit>
+    + suspend updateAppointmentStatus(id: String, status: AppointmentStatus) : Result<Unit>
+    + suspend closeInterventionBatch(appointment: Appointment, reading: PoolReading?, consumables: List<ConsumableUsage>) : Result<Unit>
+    + suspend reportAnomaly(appointmentId: String, notes: String) : Result<Unit>
+    + suspend submitTicket(ticket: Ticket) : Result<String>
+}
+
+class DriveStorageRepository <<Repository>> {
+    - driveService : DriveApi
+    - credentials : ServiceAccountCredentials
+    - compressor : ImageCompressor
+    .. Leitura (Read) ..
+    + suspend getReportPdfLink(fileId: String) : Result<String>
+    + suspend downloadReportPdf(fileId: String, destFile: File) : Result<File>
+    .. Escrita (Write) ..
+    + suspend uploadPhotoToDrive(file: File, folderId: String, onProgress: (Int) -> Unit) : Result<String>
+    + suspend uploadMultiplePhotos(files: List<File>, folderId: String) : Result<List<String>>
+    - suspend getValidAccessToken() : String
+}
+
+class ImageCompressor <<Utility>> {
+    - maxSizeBytes : Long = 1572864
+    .. Processamento Local ..
+    + suspend compressImage(rawFile: File) : File
+    + isWithinSizeLimit(file: File) : Boolean
+}
+
+' ==========================================
+' SERVIÇOS EXTERNOS (CLOUD / BACKEND)
+' ==========================================
+cloud "Firebase Auth\n(Email/Pass + Custom Claims)" as FirebaseAuthSvc
+cloud "Firebase Cloud Messaging\n(Notificações Push)" as FcmSvc
+cloud "Cloud Firestore\n(NoSQL + Cache Offline)" as FirestoreSvc
+cloud "Google Drive API\n(Service Account GCP)" as DriveSvc
+
+' ==========================================
+' RELACIONAMENTOS
+' ==========================================
+AuthRepository --> FirebaseAuthSvc : autentica / lê claims
+AuthRepository --> FcmSvc : obtém fcm_token
+AuthRepository ..> FirestoreSvc : lê/atualiza coleção users
+
+FirestoreRepository --> FirestoreSvc : CRUD / Flow / WriteBatch
+
+DriveStorageRepository *-- ImageCompressor : comprime antes do upload
+DriveStorageRepository --> DriveSvc : upload/download (OAuth2 Server-to-Server)
+
+' ==========================================
+' NOTAS ARQUITETÓNICAS (RNF)
+' ==========================================
+note bottom of AuthRepository
+  **RNF-GLB01 (RBAC):**
+  Valida Custom Claims no Token
+  para encaminhar o utilizador
+  (Cliente, Técnico ou Comercial).
+end note
+
+note bottom of FirestoreRepository
+  **RNF-TEC01 & RNF-TEC02:**
+  Cache offline ativa no SDK.
+  Fecho de intervenção usa WriteBatch
+  (atualiza visita + leituras + abate stock).
+end note
+
+note bottom of DriveStorageRepository
+  **RNF-GLB04 & RNF-COM01:**
+  Autenticação invisível via Service Account.
+  Compressão obrigatória (< 1.5 MB)
+  antes de enviar fotos para o Drive.
+end note
+@enduml

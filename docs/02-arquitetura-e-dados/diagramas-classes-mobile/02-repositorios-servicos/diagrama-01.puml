@@ -1,0 +1,52 @@
+@startuml
+allowmixing
+title Repository layer (Firebase and Google Drive)
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam classBackgroundColor #EEEDFE
+skinparam classBorderColor #534AB7
+skinparam cloudBackgroundColor #E1F5EE
+skinparam cloudBorderColor #0F6E56
+
+class AuthRepository <<repository>> {
+
+- auth : FirebaseAuth
+  .. write ..
+
+- loginUser(email: String, password: String) : AppUser
+- logout() : void
+  .. read ..
+- getCurrentUserRole() : UserRole
+  }
+
+class FirestoreRepository <<repository>> {
+
+- db : FirebaseFirestore
+  .. read ..
+
+- getDailyAppointments(date: Date) : List<Appointment>
+- getClientPools(clientId: String) : List<Pool>
+  .. write ..
+- updateAppointmentStatus(id: String, status: AppointmentStatus) : void
+- submitTicket(ticket: Ticket) : String
+  }
+
+class DriveStorageRepository <<repository>> {
+
+- driveApi : DriveApi
+  .. write ..
+
+- uploadPhotoToDrive(file: File) : String
+  .. read ..
+- getReportPdfLink(reportId: String) : String
+  }
+
+cloud "Firebase Auth" as FirebaseAuthSvc
+cloud "Cloud Firestore" as FirestoreSvc
+cloud "Google Drive API" as DriveSvc
+
+AuthRepository --> FirebaseAuthSvc
+FirestoreRepository --> FirestoreSvc
+DriveStorageRepository --> DriveSvc
+@enduml

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm run build)",
+      "Bash(npm.cmd run lint)",
+      "Bash(npm.cmd run build)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch --show-current)",
+      "PowerShell(npm run lint)",
+      "PowerShell(npm run build)",
+      "PowerShell(npm.cmd run lint)",
+      "PowerShell(npm.cmd run build)",
+      "PowerShell(git status *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git log *)",
+      "PowerShell(git branch --show-current)"
+    ],
+    "ask": [
+      "Bash(npm install *)",
+      "Bash(npm i *)",
+      "Bash(npm uninstall *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git merge *)",
+      "Bash(git rebase *)",
+      "Bash(git reset *)",
+      "Bash(firebase *)",
+      "PowerShell(npm install *)",
+      "PowerShell(npm i *)",
+      "PowerShell(git commit *)",
+      "PowerShell(git push *)",
+      "PowerShell(firebase *)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(!.env.example)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Bash(git push origin main)",
+      "Bash(git push origin main *)",
+      "Bash(git push origin grupo-a)",
+      "Bash(git push origin grupo-a *)",
+      "Bash(git push origin grupo-b)",
+      "Bash(git push origin grupo-b *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "PowerShell(git push origin main)",
+      "PowerShell(git push origin main *)",
+      "PowerShell(git push origin grupo-a *)",
+      "PowerShell(git push origin grupo-b *)",
+      "PowerShell(git push --force *)"
+    ]
+  }
+}
