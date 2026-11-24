@@ -53,9 +53,9 @@ export default function AuthProvider({ children }) {
     }
   }, [])
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, rememberSession) => {
     setAuthError(null)
-    await loginService(email, password)
+    await loginService(email, password, rememberSession)
   }, [])
 
   const logout = useCallback(async () => {
