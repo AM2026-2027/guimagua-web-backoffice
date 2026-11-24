@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
+import { Routes, Route, Navigate } from 'react-router'
 import AuthProvider from './features/auth/context/AuthProvider'
 import { useAuth } from './features/auth/hooks/useAuth'
 import RequireAuth from './features/auth/components/RequireAuth'
@@ -38,43 +38,41 @@ function ForbiddenPage() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/auth" element={<AuthPage />} />
+    <AuthProvider>
+      <Routes>
+        <Route path="/auth" element={<AuthPage />} />
 
-          <Route element={<RequireAuth />}>
-            <Route path="/sem-acesso" element={<ForbiddenPage />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/sem-acesso" element={<ForbiddenPage />} />
 
-            <Route element={<RequireRole allowedRoles={[ROLES.ADMIN]} />}>
-              <Route element={<MainLayout />}>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/tickets" element={<TicketsPage />} />
-                <Route path="/agenda" element={<AgendaPage />} />
-                <Route path="/clients" element={<ClientsPage />} />
-                <Route path="/team" element={<TeamPage />} />
-                <Route path="/services" element={<ServicesPage />} />
-                <Route path="/inventory" element={<InventoryPage />} />
-                <Route path="/reports" element={<ReportsPage />} />
-              </Route>
+          <Route element={<RequireRole allowedRoles={[ROLES.ADMIN]} />}>
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/tickets" element={<TicketsPage />} />
+              <Route path="/agenda" element={<AgendaPage />} />
+              <Route path="/clients" element={<ClientsPage />} />
+              <Route path="/team" element={<TeamPage />} />
+              <Route path="/services" element={<ServicesPage />} />
+              <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
             </Route>
           </Route>
+        </Route>
 
-          <Route
-            path="*"
-            element={
-              <MessagePage
-                code="404"
-                title="Página não encontrada"
-                message="O endereço que procura não existe."
-                linkTo="/"
-                linkLabel="Voltar ao início"
-              />
-            }
-          />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+        <Route
+          path="*"
+          element={
+            <MessagePage
+              code="404"
+              title="Página não encontrada"
+              message="O endereço que procura não existe."
+              linkTo="/"
+              linkLabel="Voltar ao início"
+            />
+          }
+        />
+      </Routes>
+    </AuthProvider>
   )
 }

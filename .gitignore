@@ -147,3 +147,11 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Claude Code (configuração pessoal)
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Firebase CLI
+firebase-debug.log
+firebase-debug.*.log
