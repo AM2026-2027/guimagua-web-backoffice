@@ -36,7 +36,9 @@ Convenções:
 | `fcm_token` | string? | base | Gerido pelas apps; o backoffice não altera |
 | `is_active` | boolean | base | Soft delete |
 | `phone` | string | proposto | Telemóvel PT (regex do dicionário, secção Técnicos) |
-| `vehicle_plate` | string? | proposto | Matrícula da viatura atribuída (`AA-00-AA`) |
+| `vehicle_plate` | string? | proposto | Matrícula (`AA-00-AA`). Não é usado pelo backoffice: a viatura passa a ser atribuída no agendamento (D-16) |
+| `username` | string | novo (D-16) | Nome de utilizador para a App Guimágua (`primeiro.ultimo`, minúsculas sem acentos, único). O email da conta é `<local>+<username>@<domínio>` com a base de `VITE_STAFF_EMAIL_BASE`. Não muda depois de criado |
+| `must_change_password` | boolean | novo (D-16) | `true` quando a conta é criada ou a palavra-passe é reposta pelo admin; a App obriga a mudar a palavra-passe e põe o campo a `false`. As regras do Firestore têm de deixar o próprio utilizador alterar só este campo |
 | `created_at`, `updated_at` | timestamp | proposto | |
 
 ## `clients`: clientes (proprietários)
