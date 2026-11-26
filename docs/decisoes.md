@@ -22,18 +22,20 @@ Este ficheiro é partilhado: só se altera com autorização, via PR `chore/*` p
 | D-13 | 24/11/2026 | **Regras de segurança** (antiga P-07): `firestore.rules` e `storage.rules` são ficheiros partilhados, alterados só via PR revisto por um elemento de cada equipa (web e Android). |
 | D-14 | 24/11/2026 | **Plano Blaze** (antiga P-08): ativado em período de teste, sem custos. Mantém-se a regra de ficar dentro das quotas gratuitas e de não usar Cloud Functions. **Antes do fim do período de teste**, confirmar na consola da Google Cloud a data de fim e o que acontece à conta de faturação, para o Storage não deixar de funcionar a meio do projeto. |
 | D-15 | 24/11/2026 | **Aprovação dos PR do product owner:** os PR abertos pelo product owner (conta GitHub `ldcc9298-arch`) não precisam de revisão nem de aprovação de outra pessoa; basta a CI verde e não haver conflitos. Vale para PR de módulo, de promoção (`grupo-<a\|b>` → `main`) e `chore/*`. Para os PR dos restantes elementos, mantém-se a regra de pelo menos uma aprovação de alguém que não seja o autor. |
+| D-16 | 26/11/2026 | **Primeiro acesso e reposição da palavra-passe da equipa** (altera a D-08). A conta é criada com uma palavra-passe temporária, mostrada **uma única vez** ao admin, que a passa ao colaborador. O documento `users/{uid}` fica com `must_change_password: true` e a App obriga a escolher uma palavra-passe nova no início de sessão seguinte, pondo depois o campo a `false`. **Reposição:** o backoffice envia o link do Firebase para o email da conta (um endereço a que a Guimágua tem acesso, por exemplo um alias com `+` do email do admin), o admin define uma palavra-passe genérica e o campo volta a `true`. Não há SMS nem servidor, por isso não há custos. A viatura deixa de estar no técnico: passa a ser atribuída no agendamento. **O backoffice tem uma única conta `admin`**, que não é criada nem editada no módulo `team`: o `team` só gere técnicos e comerciais, que precisam de conta para aceder à App Guimágua. Os administradores não têm especialidades. **Acesso com nome de utilizador:** cada conta tem um `username`, gerado pelo backoffice a partir do nome (`primeiro.ultimo`; se já existir, `primeiro.inicialDoSegundoNome.ultimo`; se ainda existir, acrescenta-se um número). O email da conta no Firebase Auth é derivado dele: `<local>+<username>@<domínio>`, com a base definida em `VITE_STAFF_EMAIL_BASE` (por exemplo, um Gmail a que a Guimágua tem acesso). O técnico entra na App só com o `username`, e a App monta o email com a mesma base. O domínio tem de ser de uma caixa real, para os links de reposição chegarem. O `username` e o email não mudam depois de criados. |
 
-### D-08: fluxo de criação de contas no módulo `team`
+### D-08: fluxo de criação de contas no módulo `team` (com as alterações da D-16)
 
-1. O admin preenche um formulário com nome, email, telefone, role (`technician` ou `commercial`), especialidades e viatura.
+1. O admin preenche um formulário com nome, telefone, role (`technician` ou `commercial`) e especialidades; o `username` e o email são gerados (D-16). A viatura não está no técnico e a conta `admin` não é gerida no `team` (D-16).
 2. A conta é criada numa **instância secundária** do Firebase, para não terminar a sessão do admin:
    - em `src/config/firebase.js`: `initializeApp(firebaseConfig, 'secondary')` + `initializeAuth(secondaryApp, { persistence: inMemoryPersistence })`, exportado como `secondaryAuth`;
    - esta alteração ao ficheiro partilhado fica **autorizada por esta decisão**, no PR do módulo `team`, com revisão de um elemento de cada grupo.
 3. Em `userService.js`, uma função `createStaffAccount()`:
-   - `createUserWithEmailAndPassword(secondaryAuth, email, <password temporária aleatória>)`, com a password gerada com `crypto.getRandomValues` e nunca mostrada a ninguém;
-   - `setDoc(doc(db, 'users', uid), { name, email, role, phone, specialties, vehicle_plate, is_active: true, created_at: serverTimestamp(), updated_at: serverTimestamp() })`;
+   - `createUserWithEmailAndPassword(secondaryAuth, email, <palavra-passe temporária>)`, com a palavra-passe gerada com `crypto.getRandomValues`, mostrada uma única vez ao admin e nunca guardada (D-16);
    - `signOut(secondaryAuth)`;
-   - `sendPasswordResetEmail(auth, email)`, para o colaborador definir a sua própria password. Equivale a "disparar as credenciais" do RF-WEB02.
+   - `setDoc(doc(db, 'users', uid), { name, username, email, role, phone, specialties, is_active: true, must_change_password: true, created_at: serverTimestamp(), updated_at: serverTimestamp() })`.
+   - Entregar a palavra-passe temporária ao colaborador equivale a "disparar as credenciais" do RF-WEB02.
+   - Reposição (D-16): `sendPasswordResetEmail(auth, email)` para o email da conta, mais `must_change_password: true`.
 4. **Erros:**
    - se a conta Auth for criada mas o documento falhar, mostrar o erro e permitir repetir só a gravação do documento (guardar o `uid` no estado);
    - sem o Admin SDK não é possível apagar contas Auth a partir do browser: retirar o acesso = `is_active: false`, que o `AuthProvider` já trata.
