@@ -1,5 +1,8 @@
 import { INPUT_CLASS, SECONDARY_BUTTON } from '../../../shared/components/uiClasses'
+import { Link } from 'react-router'
+import { LINK_BUTTON } from '../../../shared/components/uiClasses'
 import { formatLongDate } from '../utils/date'
+import { createMonthSearchParams } from '../utils/viewParams'
 
 export default function AgendaToolbar({
   dateKey,
@@ -8,6 +11,7 @@ export default function AgendaToolbar({
   statusOptions,
   searchTerm,
   onDateChange,
+  onMonthNavigate,
   onStatusChange,
   onSearchChange,
 }) {
@@ -38,6 +42,13 @@ export default function AgendaToolbar({
           <p className="text-xs text-slate-500">
             {dateKey === todayKey ? 'Hoje · fuso Europe/Lisbon' : 'Fuso Europe/Lisbon'}
           </p>
+          <Link
+            to={`/agenda?${createMonthSearchParams(dateKey.slice(0, 7))}`}
+            onClick={onMonthNavigate}
+            className={`${LINK_BUTTON} mt-2 inline-flex`}
+          >
+            Voltar à grelha mensal
+          </Link>
         </div>
       </div>
 

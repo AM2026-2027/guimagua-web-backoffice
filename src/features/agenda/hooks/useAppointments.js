@@ -11,7 +11,7 @@ import { getAgendaErrorMessage } from '../utils/errors'
 const EMPTY_SCHEDULE = { dateKey: null, items: [], error: '' }
 const EMPTY_ITEMS = []
 
-export function useAppointments(dateKey) {
+export function useAppointments(dateKey, { enabled = true, loadReferences = enabled } = {}) {
   const [schedule, setSchedule] = useState(EMPTY_SCHEDULE)
   const [staff, setStaff] = useState([])
   const [services, setServices] = useState([])
@@ -53,6 +53,8 @@ export function useAppointments(dateKey) {
   const scheduleKey = `${dateKey}:${reloadToken}`
 
   useEffect(() => {
+    if (!enabled) return undefined
+
     const unsubscribe = subscribeAppointmentsForDay(
       dateKey,
       (items) => {
@@ -70,7 +72,7 @@ export function useAppointments(dateKey) {
     )
     // Limpeza: remove a subscrição do dia anterior ou quando a página desmonta.
     return unsubscribe
-  }, [dateKey, reloadToken, scheduleKey])
+  }, [dateKey, enabled, reloadToken, scheduleKey])
 
   const scheduleItems = useMemo(
     () => (schedule.dateKey === scheduleKey ? schedule.items : EMPTY_ITEMS),
@@ -82,6 +84,8 @@ export function useAppointments(dateKey) {
   )
 
   useEffect(() => {
+    if (!loadReferences) return undefined
+
     const poolIds = poolIdsKey ? poolIdsKey.split('|') : []
     const missingPoolIds = poolIds.filter((id) => !Object.prototype.hasOwnProperty.call(poolsById, id))
     if (missingPoolIds.length === 0) return undefined
@@ -109,7 +113,7 @@ export function useAppointments(dateKey) {
     return () => {
       ignore = true
     }
-  }, [poolIdsKey, poolsById, reloadToken])
+  }, [loadReferences, poolIdsKey, poolsById, reloadToken])
 
   const clientIdsKey = useMemo(() => {
     const poolIds = poolIdsKey ? poolIdsKey.split('|') : []
@@ -125,6 +129,8 @@ export function useAppointments(dateKey) {
   }, [poolIdsKey, poolsById])
 
   useEffect(() => {
+    if (!loadReferences) return undefined
+
     const clientIds = clientIdsKey ? clientIdsKey.split('|') : []
     const missingClientIds = clientIds.filter(
       (id) => !Object.prototype.hasOwnProperty.call(clientsById, id),
@@ -153,7 +159,7 @@ export function useAppointments(dateKey) {
     return () => {
       ignore = true
     }
-  }, [clientIdsKey, clientsById, reloadToken])
+  }, [clientIdsKey, clientsById, loadReferences, reloadToken])
 
   const loading = schedule.dateKey !== scheduleKey || metadataLoading
   const error =
@@ -185,6 +191,8 @@ export function useAppointments(dateKey) {
     clientsById,
     loading,
     error,
+    metadataLoading,
+    metadataError,
     reload,
   }
 }
