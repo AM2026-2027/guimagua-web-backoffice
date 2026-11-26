@@ -5,8 +5,8 @@ import {
   appointmentStatusCountLabel,
   appointmentStatusLabel,
 } from '../utils/labels'
-import { countAppointmentStatuses } from '../utils/month'
-import { sortMonthAppointments } from '../utils/sort'
+import { countAppointmentStatuses } from '../utils/status'
+import { sortAgendaAppointments } from '../utils/sort'
 
 function statusSummary(appointments) {
   const counts = countAppointmentStatuses(appointments)
@@ -24,7 +24,7 @@ export default function MonthAgendaList({
   onDaySelect,
 }) {
   const appointmentsByDate = new Map()
-  for (const appointment of sortMonthAppointments(appointments, staffById)) {
+  for (const appointment of sortAgendaAppointments(appointments, staffById)) {
     const dateKey = dateKeyOf(appointment.date)
     if (!dateKey) continue
     const current = appointmentsByDate.get(dateKey) ?? []

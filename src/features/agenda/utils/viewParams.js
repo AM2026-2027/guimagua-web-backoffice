@@ -24,11 +24,15 @@ export function isValidWeekKey(value) {
 
 export function parseAgendaViewParams(searchParams, todayKey) {
   const requestedView = searchParams.get('view')
-  const view = requestedView === 'month' ? 'month' : 'day'
+  const view = ['month', 'week'].includes(requestedView) ? requestedView : 'day'
   const requestedDate = searchParams.get('date')
   const requestedMonth = searchParams.get('month')
+  const requestedWeek = searchParams.get('week')
   const dateKey = isValidDateKey(requestedDate) ? requestedDate : todayKey
   const monthKey = isValidMonthKey(requestedMonth) ? requestedMonth : todayKey.slice(0, 7)
+  const weekKey = getWeekStartDateKey(
+    isValidDateKey(requestedWeek) ? requestedWeek : todayKey,
+  )
   const normalizedParams = new URLSearchParams(searchParams)
 
   normalizedParams.set('view', view)
@@ -36,16 +40,21 @@ export function parseAgendaViewParams(searchParams, todayKey) {
     normalizedParams.set('date', dateKey)
     normalizedParams.delete('month')
     normalizedParams.delete('week')
-  } else {
+  } else if (view === 'month') {
     normalizedParams.set('month', monthKey)
     normalizedParams.delete('date')
     normalizedParams.delete('week')
+  } else {
+    normalizedParams.set('week', weekKey)
+    normalizedParams.delete('date')
+    normalizedParams.delete('month')
   }
 
   return {
     view,
     dateKey,
     monthKey,
+    weekKey,
     normalizedSearch: normalizedParams.toString(),
   }
 }

@@ -7,7 +7,7 @@ export function sortAppointments(appointments) {
   )
 }
 
-export function sortMonthAppointments(appointments, staffById) {
+export function sortAgendaAppointments(appointments, staffById) {
   return appointments.toSorted((left, right) => {
     const dateDifference =
       (toDate(left.date)?.getTime() ?? 0) - (toDate(right.date)?.getTime() ?? 0)

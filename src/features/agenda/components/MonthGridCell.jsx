@@ -4,8 +4,7 @@ import {
   appointmentStatusCountLabel,
   appointmentStatusLabel,
 } from '../utils/labels'
-import { countAppointmentStatuses } from '../utils/month'
-import { appointmentStatusClass } from '../utils/status'
+import { appointmentStatusClass, countAppointmentStatuses } from '../utils/status'
 
 function makeAccessibleName(day, appointments) {
   if (!day.inMonth) return `${day.fullDateLabel}, fora do mês apresentado. Abrir agenda do dia.`
