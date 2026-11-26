@@ -12,6 +12,7 @@ import StaffFormModal from '../components/StaffFormModal'
 import TemporaryPasswordDialog from '../components/TemporaryPasswordDialog'
 import TeamStats from '../components/TeamStats'
 import { TEAM_CARD_FILTERS } from '../utils/labels'
+import { sortStaff } from '../utils/sort'
 import TeamTable from '../components/TeamTable'
 import TeamToolbar from '../components/TeamToolbar'
 import { activityStatus } from '../utils/activity'
@@ -62,6 +63,7 @@ export default function TeamPage() {
   const [searchTerm, setSearchTerm] = useState('')
   // Filtro dos cartões de totais (chave de TEAM_CARD_FILTERS) ou null para mostrar todos.
   const [statFilter, setStatFilter] = useState(null)
+  const [sort, setSort] = useState('name')
   // { user: null } = criar; { user } = editar.
   const [formTarget, setFormTarget] = useState(null)
   // { type: 'toggle' | 'reset', user }
@@ -69,10 +71,10 @@ export default function TeamPage() {
 
   // Estado derivado: filtros, ordenação e totais calculados na renderização.
   const term = normalizeText(searchTerm.trim())
-  const visibleUsers = team.users
+  const filteredUsers = team.users
     .filter((user) => matchesCardFilter(user, statFilter, activity))
     .filter((user) => !term || [user.name, user.username, user.email, user.phone].some((value) => normalizeText(value).includes(term)))
-    .toSorted((a, b) => normalizeText(a.name).localeCompare(normalizeText(b.name), 'pt-PT'))
+  const visibleUsers = sortStaff(filteredUsers, sort, activity.byTech)
 
   const takenUsernames = new Set(team.users.map((user) => user.username).filter(Boolean))
   const activeUsers = team.users.filter((user) => user.is_active !== false)
@@ -179,6 +181,8 @@ export default function TeamPage() {
       <TeamToolbar
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        sort={sort}
+        onSortChange={setSort}
       />
 
       {statFilter && (
