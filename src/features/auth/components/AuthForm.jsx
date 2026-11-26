@@ -77,9 +77,14 @@ export default function AuthForm() {
     <section className="relative w-full max-w-[536px] overflow-hidden rounded-[18px] bg-white shadow-[0_18px_36px_rgba(15,35,65,0.14)]">
       <div className="h-1.5 bg-gradient-to-r from-[#004568] via-[#0876a5] to-sky-400" aria-hidden="true" />
       <div className="px-7 pb-7 pt-8 sm:px-12 sm:pb-8 sm:pt-9">
-        <div className="mb-4 inline-flex items-center gap-1.5 rounded-sm bg-blue-100 px-2.5 py-1.5 text-[11px] font-medium tracking-wide text-[#06456a]">
-          <FieldIcon><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 1 1 8 0v3M12 14v3" /></FieldIcon>
-          <span>AUTENTICAÇÃO BACKOFFICE</span>
+        {/* Logotipo Guimágua centrado no topo do cartão */}
+        <div className="mb-6 flex flex-col items-center gap-2">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#004568] text-white shadow-sm">
+            <svg viewBox="0 0 32 32" fill="none" className="h-7 w-7" aria-hidden="true"><path d="M5 10c3.5-3 6.5 3 10 0s6.5-3 12 0M5 16c3.5-3 6.5 3 10 0s6.5-3 12 0M5 22c3.5-3 6.5 3 10 0s6.5-3 12 0" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+          </span>
+          <div className="text-center leading-tight">
+            <span className="block text-[17px] font-bold tracking-tight text-[#073c5b]">GUIMÁGUA</span>
+          </div>
         </div>
 
         <h1 className="text-lg font-bold tracking-tight text-slate-900">{isLogin ? 'Entrar na sua conta' : 'Recuperar palavra-passe'}</h1>
