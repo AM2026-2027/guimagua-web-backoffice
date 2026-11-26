@@ -171,11 +171,15 @@ export function useClients({ onClientCreated } = {}) {
     setSearch(apply)
   }, [])
 
-  /** Ajusta os totais dos cartões depois de criar, desativar ou reativar. */
+  /** Ajusta os totais dos cartões depois de criar, desativar ou reativar ({ clients, inactiveClients, pools }). */
   const adjustCounts = useCallback((delta) => {
     setCounts((prev) =>
       prev
-        ? { clients: prev.clients + (delta.clients ?? 0), pools: prev.pools + (delta.pools ?? 0) }
+        ? {
+            clients: prev.clients + (delta.clients ?? 0),
+            inactiveClients: prev.inactiveClients + (delta.inactiveClients ?? 0),
+            pools: prev.pools + (delta.pools ?? 0),
+          }
         : prev,
     )
   }, [])
@@ -211,7 +215,7 @@ export function useClients({ onClientCreated } = {}) {
     setActionError('')
     try {
       upsertClient(await persistClientActive(client, isActive))
-      adjustCounts({ clients: isActive ? 1 : -1 })
+      adjustCounts({ clients: isActive ? 1 : -1, inactiveClients: isActive ? -1 : 1 })
       return true
     } catch (error) {
       console.error(error)

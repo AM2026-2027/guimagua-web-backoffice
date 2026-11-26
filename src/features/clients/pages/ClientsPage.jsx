@@ -98,17 +98,26 @@ export default function ClientsPage() {
 
       <Notice message={notice} onClose={clearNotice} />
 
-      <ClientsStats counts={list.counts} />
+      <ClientsStats counts={list.counts} status={list.status} onStatusChange={list.changeStatus} />
 
       <ClientsToolbar
         searchTerm={list.searchTerm}
         onSearchChange={list.setSearchTerm}
         searching={list.searching}
-        status={list.status}
-        onStatusChange={list.changeStatus}
         sort={sort}
         onSortChange={setSort}
       />
+
+      {list.status !== 'all' && (
+        <div className="flex items-center gap-3 text-sm text-slate-600">
+          <span>
+            A mostrar só <strong>{list.status === 'active' ? 'clientes ativos' : 'clientes inativos'}</strong>.
+          </span>
+          <button type="button" onClick={() => list.changeStatus('all')} className="font-medium text-primary hover:underline">
+            Limpar filtro
+          </button>
+        </div>
+      )}
 
       {!formTarget && !confirmTarget && <ErrorAlert message={list.actionError} onClose={list.clearActionError} />}
       <ErrorAlert message={list.searchError} />

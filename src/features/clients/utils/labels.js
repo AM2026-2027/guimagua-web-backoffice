@@ -1,11 +1,5 @@
 // Mapas de rótulos PT-PT para os valores guardados no Firestore em minúsculas snake_case (D-07).
 
-export const CLIENT_STATUS_FILTERS = [
-  { value: 'all', label: 'Todos' },
-  { value: 'active', label: 'Ativos' },
-  { value: 'inactive', label: 'Inativos' },
-]
-
 export const CLIENT_SORT_OPTIONS = [
   { value: 'recent', label: 'Recentes' },
   { value: 'name', label: 'Nome (A-Z)' },
