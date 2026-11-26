@@ -1,7 +1,7 @@
 import { INPUT_CLASS } from '../../../shared/components/uiClasses'
-import { CLIENT_SORT_OPTIONS, CLIENT_STATUS_FILTERS } from '../utils/labels'
+import { CLIENT_SORT_OPTIONS } from '../utils/labels'
 
-export default function ClientsToolbar({ searchTerm, onSearchChange, searching, status, onStatusChange, sort, onSortChange }) {
+export default function ClientsToolbar({ searchTerm, onSearchChange, searching, sort, onSortChange }) {
   return (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
       <div className="flex-1">
@@ -28,24 +28,7 @@ export default function ClientsToolbar({ searchTerm, onSearchChange, searching, 
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:w-96">
-        <div>
-          <label htmlFor="clients-status" className="text-sm font-medium text-slate-700">
-            Estado
-          </label>
-          <select
-            id="clients-status"
-            value={status}
-            onChange={(event) => onStatusChange(event.target.value)}
-            className={INPUT_CLASS}
-          >
-            {CLIENT_STATUS_FILTERS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="lg:w-56">
         <div>
           <label htmlFor="clients-sort" className="text-sm font-medium text-slate-700">
             Ordenar

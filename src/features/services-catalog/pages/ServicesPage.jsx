@@ -4,6 +4,7 @@ import LoadingSpinner from '../../../shared/components/LoadingSpinner'
 import ServiceFormModal from '../components/ServiceFormModal'
 import ServicesTable from '../components/ServicesTable'
 import StockAlertsCard from '../components/StockAlertsCard'
+import ServiceStatusCard from '../components/ServiceStatusCard'
 import { StockLegend } from '../components/StockDot'
 import useConsumables from '../hooks/useConsumables'
 import useServicesCatalog from '../hooks/useServicesCatalog'
@@ -127,6 +128,11 @@ export default function ServicesPage() {
     setEditingService(null)
   }, [])
 
+  function applyStatusFilter(value) {
+    setStatus(value)
+    setPage(1)
+  }
+
   function applyStockFilter(level) {
     setStockFilter(level)
     setPage(1)
@@ -173,12 +179,12 @@ export default function ServicesPage() {
       </header>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <MetricCard
-          label="Serviços ativos"
-          value={activeCount}
-          badge={catalogShare === null ? 'Catálogo vazio' : `${catalogShare}% do catálogo`}
-          footnote={`${inactiveCount} ${inactiveCount === 1 ? 'serviço inativo' : 'serviços inativos'}`}
-          icon={<MetricIcon><circle cx="12" cy="12" r="8" /><path d="m9 12 2 2 4-4" /></MetricIcon>}
+        <ServiceStatusCard
+          activeCount={activeCount}
+          inactiveCount={inactiveCount}
+          catalogShare={catalogShare}
+          activeFilter={status}
+          onFilter={applyStatusFilter}
         />
         <StockAlertsCard
           insufficientCount={insufficientCount}
@@ -195,7 +201,7 @@ export default function ServicesPage() {
         />
       </div>
 
-      <section aria-label="Filtros do catálogo" className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-2 xl:grid-cols-[minmax(220px,1.2fr)_repeat(3,minmax(160px,1fr))]">
+      <section aria-label="Filtros do catálogo" className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-2 xl:grid-cols-[minmax(220px,1.2fr)_repeat(2,minmax(160px,1fr))]">
         <label className="relative block">
           <span className="sr-only">Pesquisar serviços</span>
           <span aria-hidden="true" className="absolute left-3 top-2 text-slate-500">⌕</span>
@@ -215,14 +221,6 @@ export default function ServicesPage() {
           </select>
         </label>
         <label className={filterLabelClass}>
-          <span className="shrink-0 font-semibold uppercase">Estado:</span>
-          <select value={status} onChange={updateFilter(setStatus)} className={filterSelectClass}>
-            <option value="all">Todos</option>
-            <option value="active">Ativos</option>
-            <option value="inactive">Inativos</option>
-          </select>
-        </label>
-        <label className={filterLabelClass}>
           <span className="shrink-0 font-semibold uppercase">Ordenar:</span>
           <select value={sortOrder} onChange={updateFilter(setSortOrder)} className={filterSelectClass}>
             <option value="name-asc">Nome (A–Z)</option>
@@ -231,6 +229,15 @@ export default function ServicesPage() {
           </select>
         </label>
       </section>
+
+      {status !== 'all' && (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <span>A mostrar só serviços <strong>{status === 'active' ? 'ativos' : 'inativos'}</strong></span>
+          <button type="button" onClick={() => applyStatusFilter('all')} className="rounded-full border border-slate-300 bg-white px-3 py-0.5 text-xs font-medium text-primary hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+            Limpar filtro
+          </button>
+        </div>
+      )}
 
       {stockFilter !== 'all' && (
         <p className="flex flex-wrap items-center gap-2 text-sm text-slate-700" aria-live="polite">
