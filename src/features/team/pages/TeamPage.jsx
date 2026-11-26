@@ -11,9 +11,29 @@ import { useTodayActivity } from '../hooks/useTodayActivity'
 import StaffFormModal from '../components/StaffFormModal'
 import TemporaryPasswordDialog from '../components/TemporaryPasswordDialog'
 import TeamStats from '../components/TeamStats'
+import { TEAM_CARD_FILTERS } from '../utils/labels'
 import TeamTable from '../components/TeamTable'
 import TeamToolbar from '../components/TeamToolbar'
 import { activityStatus } from '../utils/activity'
+
+/** Regra de cada cartão filtrante (null = sem filtro). */
+function matchesCardFilter(user, filter, activity) {
+  const active = user.is_active !== false
+  switch (filter) {
+    case 'technicians':
+      return active && user.role === ROLES.TECHNICIAN
+    case 'commercials':
+      return active && user.role === ROLES.COMMERCIAL
+    case 'in_service':
+      return active && activityStatus(user, activity.byTech.get(user.id)) === 'in_service'
+    case 'visits_today':
+      return active && activity.byTech.get(user.id)?.total > 0
+    case 'inactive':
+      return !active
+    default:
+      return true
+  }
+}
 
 function normalizeText(value = '') {
   return String(value).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -40,8 +60,8 @@ export default function TeamPage() {
   const activity = useTodayActivity()
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
+  // Filtro dos cartões de totais (chave de TEAM_CARD_FILTERS) ou null para mostrar todos.
+  const [statFilter, setStatFilter] = useState(null)
   // { user: null } = criar; { user } = editar.
   const [formTarget, setFormTarget] = useState(null)
   // { type: 'toggle' | 'reset', user }
@@ -50,8 +70,7 @@ export default function TeamPage() {
   // Estado derivado: filtros, ordenação e totais calculados na renderização.
   const term = normalizeText(searchTerm.trim())
   const visibleUsers = team.users
-    .filter((user) => roleFilter === 'all' || user.role === roleFilter)
-    .filter((user) => statusFilter === 'all' || (statusFilter === 'active') === (user.is_active !== false))
+    .filter((user) => matchesCardFilter(user, statFilter, activity))
     .filter((user) => !term || [user.name, user.username, user.email, user.phone].some((value) => normalizeText(value).includes(term)))
     .toSorted((a, b) => normalizeText(a.name).localeCompare(normalizeText(b.name), 'pt-PT'))
 
@@ -64,6 +83,8 @@ export default function TeamPage() {
       ? activeUsers.filter((user) => activityStatus(user, activity.byTech.get(user.id)) === 'in_service').length
       : null,
     visitsToday: activity.loaded && !activity.error ? activity.totalToday : null,
+    withVisitsToday: activity.loaded && !activity.error ? activeUsers.filter((user) => activity.byTech.get(user.id)?.total > 0).length : null,
+    inactive: team.users.length - activeUsers.length,
   }
 
   function openForm(target) {
@@ -149,16 +170,27 @@ export default function TeamPage() {
         </div>
       )}
 
-      <TeamStats {...stats} />
+      <TeamStats
+        {...stats}
+        activeFilter={statFilter}
+        onToggleFilter={(filter) => setStatFilter((current) => (current === filter ? null : filter))}
+      />
 
       <TeamToolbar
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
-        role={roleFilter}
-        onRoleChange={setRoleFilter}
-        status={statusFilter}
-        onStatusChange={setStatusFilter}
       />
+
+      {statFilter && (
+        <div className="flex items-center gap-3 text-sm text-slate-600">
+          <span>
+            A mostrar só <strong>{TEAM_CARD_FILTERS[statFilter]}</strong>.
+          </span>
+          <button type="button" onClick={() => setStatFilter(null)} className="font-medium text-primary hover:underline">
+            Limpar filtro
+          </button>
+        </div>
+      )}
 
       {activity.error && <ErrorAlert message={activity.error} />}
 

@@ -18,7 +18,7 @@ function replaceById(items, updated) {
 /**
  * Ficha do cliente: dados do cliente, piscinas e respetivas operações (as operações devolvem true/false).
  * Callbacks opcionais para a página propagar as alterações à lista sem a voltar a ler:
- * `onClientSaved(client)`, `onPoolSaved(pool)` e `onCountsChange({ clients, pools })`.
+ * `onClientSaved(client)`, `onPoolSaved(pool)` e `onCountsChange({ clients, inactiveClients, pools })`.
  */
 export function useClientDetail(clientId, { onClientSaved, onPoolSaved, onCountsChange } = {}) {
   const [reloadToken, setReloadToken] = useState(0)
@@ -75,7 +75,7 @@ export function useClientDetail(clientId, { onClientSaved, onPoolSaved, onCounts
       const updated = await persistClientActive(detail.client, isActive)
       setDetail((prev) => ({ ...prev, client: updated }))
       onClientSaved?.(updated)
-      onCountsChange?.({ clients: isActive ? 1 : -1 })
+      onCountsChange?.({ clients: isActive ? 1 : -1, inactiveClients: isActive ? -1 : 1 })
     }, 'Não foi possível alterar o estado do cliente.')
   }
 

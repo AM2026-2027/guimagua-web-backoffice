@@ -109,11 +109,12 @@ export async function getClient(clientId) {
 
 /** Totais para os cartões do topo (agregação: 1 leitura por cada 1000 documentos contados). */
 export async function countActiveClientsAndPools() {
-  const [clients, pools] = await Promise.all([
+  const [clients, inactiveClients, pools] = await Promise.all([
     getCountFromServer(query(collection(db, CLIENTS), where('is_active', '==', true))),
+    getCountFromServer(query(collection(db, CLIENTS), where('is_active', '==', false))),
     getCountFromServer(query(collection(db, POOLS), where('is_active', '==', true))),
   ])
-  return { clients: clients.data().count, pools: pools.data().count }
+  return { clients: clients.data().count, inactiveClients: inactiveClients.data().count, pools: pools.data().count }
 }
 
 /**
