@@ -35,7 +35,7 @@ export default function AgendaStats({ appointments, staffById, servicesById }) {
       : '—'
 
   return (
-    <section aria-label="Indicadores do dia" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Indicadores do dia" className="grid gap-3 sm:grid-cols-3">
       <StatCard
         label="Intervenções hoje"
         value={NUMBER_FORMAT.format(scheduledToday.length)}
@@ -43,7 +43,6 @@ export default function AgendaStats({ appointments, staffById, servicesById }) {
       />
       <StatCard label="Técnicos no terreno" value={NUMBER_FORMAT.format(techniciansInField)} hint="Com intervenção em curso" />
       <StatCard label="Duração prevista média" value={averagePlannedDuration} hint="Estimativa pelo catálogo de serviços" />
-      <StatCard label="Cumprimento de SLA" value="—" hint="Sem dados de SLA no modelo atual" />
     </section>
   )
 }

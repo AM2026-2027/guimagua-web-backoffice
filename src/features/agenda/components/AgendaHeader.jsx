@@ -1,8 +1,10 @@
-import { PRIMARY_BUTTON } from '../../../shared/components/uiClasses'
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '../../../shared/components/uiClasses'
 import AgendaViewTabs from './AgendaViewTabs'
 
 export default function AgendaHeader({
   onPrint,
+  onCreate,
+  createDisabled,
   view,
   dateKey,
   monthKey,
@@ -34,10 +36,13 @@ export default function AgendaHeader({
           onMonthNavigate={onMonthNavigate}
         />
         {view === 'day' && (
-          <button type="button" onClick={onPrint} className={PRIMARY_BUTTON}>
+          <button type="button" onClick={onPrint} className={SECONDARY_BUTTON}>
             Imprimir escala
           </button>
         )}
+        <button type="button" onClick={onCreate} disabled={createDisabled} className={PRIMARY_BUTTON}>
+          <span aria-hidden="true">+</span> Agendar intervenção
+        </button>
       </div>
     </header>
   )
