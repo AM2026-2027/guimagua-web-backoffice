@@ -12,6 +12,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  startAfter,
   where,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
@@ -30,6 +31,7 @@ const CLIENT_SEARCH_LIMIT = 10
 
 /** Erro lançado quando o agendamento já não está `scheduled` (ex.: cancelado noutro separador). */
 export const APPOINTMENT_NOT_SCHEDULED = 'agenda/not-scheduled'
+export const AGENDA_MONTH_PAGE_SIZE = 500
 
 function normalize(snapshot) {
   return { id: snapshot.id, ...snapshot.data() }
@@ -63,6 +65,22 @@ export function subscribeAppointmentsForDay(dateKey, onItems, onError) {
     (snapshot) => onItems(snapshot.docs.map(normalize)),
     onError,
   )
+}
+
+export async function listAgendaAppointmentsMonthPage({ start, end, cursor = null, pageSize }) {
+  const constraints = [
+    where('date', '>=', Timestamp.fromDate(start)),
+    where('date', '<', Timestamp.fromDate(end)),
+    orderBy('date'),
+  ]
+  if (cursor) constraints.push(startAfter(cursor))
+  constraints.push(limit(pageSize))
+
+  const snapshot = await getDocs(query(collection(db, APPOINTMENTS), ...constraints))
+  return {
+    items: snapshot.docs.map(normalize),
+    cursor: snapshot.docs.at(-1) ?? cursor,
+  }
 }
 
 export async function listAgendaStaff() {
