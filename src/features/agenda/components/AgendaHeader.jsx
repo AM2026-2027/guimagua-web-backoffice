@@ -1,6 +1,6 @@
-import { CARD_CLASS, PRIMARY_BUTTON } from '../../../shared/components/uiClasses'
+import { CARD_CLASS, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../../../shared/components/uiClasses'
 
-export default function AgendaHeader({ onPrint }) {
+export default function AgendaHeader({ onPrint, onCreate, createDisabled }) {
   return (
     <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
       <div>
@@ -22,8 +22,11 @@ export default function AgendaHeader({ onPrint }) {
             Mês
           </button>
         </div>
-        <button type="button" onClick={onPrint} className={PRIMARY_BUTTON}>
+        <button type="button" onClick={onPrint} className={SECONDARY_BUTTON}>
           Imprimir escala
+        </button>
+        <button type="button" onClick={onCreate} disabled={createDisabled} className={PRIMARY_BUTTON}>
+          <span aria-hidden="true">+</span> Agendar intervenção
         </button>
       </div>
     </header>

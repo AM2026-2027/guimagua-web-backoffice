@@ -1,24 +1,28 @@
 import { CARD_CLASS } from '../../../shared/components/uiClasses'
 import { appointmentStatusLabel, staffRoleLabel } from '../utils/labels'
-import { dateKeyOf, minutesInLisbon, toDate } from '../utils/date'
+import { dateKeyOf, minutesInLisbon } from '../utils/date'
+import {
+  WORKDAY_END_MINUTE,
+  WORKDAY_START_MINUTE,
+  appointmentInterval,
+  occupiesStaff,
+} from '../utils/schedule'
 import { sortAppointments } from '../utils/sort'
 
-const DAY_START_MINUTE = 8 * 60
-const DAY_END_MINUTE = 17 * 60
-const HOUR_LABELS = Array.from({ length: 10 }, (_, index) => `${String(index + 8).padStart(2, '0')}:00`)
+// Grelha do dia de trabalho (08:00–19:00): uma coluna por hora.
+const DAY_START_MINUTE = WORKDAY_START_MINUTE
+const DAY_END_MINUTE = WORKDAY_END_MINUTE
+const HOUR_COLUMNS = Array.from(
+  { length: (DAY_END_MINUTE - DAY_START_MINUTE) / 60 },
+  (_, index) => `${String(DAY_START_MINUTE / 60 + index).padStart(2, '0')}:00`,
+)
+const GRID_STYLE = { gridTemplateColumns: `repeat(${HOUR_COLUMNS.length}, minmax(0, 1fr))` }
 
 function getAppointmentSpan(appointment, servicesById) {
-  const start = toDate(appointment.date)
-  if (!start) return null
-
-  const explicitEnd = toDate(appointment.end_date)
-  const duration = Number(servicesById[appointment.service_id]?.default_duration_min)
-  const end = explicitEnd && explicitEnd > start
-    ? explicitEnd
-    : Number.isFinite(duration) && duration > 0
-      ? new Date(start.getTime() + duration * 60_000)
-      : null
-  if (!end) return null
+  // O mesmo cálculo de início/fim usado na verificação de sobreposições (utils/schedule.js).
+  const interval = appointmentInterval(appointment, servicesById)
+  if (!interval) return null
+  const { start, end } = interval
 
   const startMinute = minutesInLisbon(start)
   const endMinute = minutesInLisbon(end) + (dateKeyOf(end) !== dateKeyOf(start) ? 24 * 60 : 0)
@@ -66,6 +70,7 @@ export default function DailyTimeline({
   servicesById,
   now,
   hasAnyAppointments,
+  onSelect,
 }) {
   const staffRows = staff
     .filter(
@@ -80,7 +85,10 @@ export default function DailyTimeline({
     visibleNow != null && visibleNow >= DAY_START_MINUTE && visibleNow <= DAY_END_MINUTE
       ? ((visibleNow - DAY_START_MINUTE) / (DAY_END_MINUTE - DAY_START_MINUTE)) * 100
       : null
-  const appointmentsWithoutDuration = sortedAppointments.filter(
+  // Os cancelados libertam o horário: não ocupam a linha do colaborador, só aparecem na lista abaixo.
+  const timelineAppointments = sortedAppointments.filter(occupiesStaff)
+  const cancelledCount = sortedAppointments.length - timelineAppointments.length
+  const appointmentsWithoutDuration = timelineAppointments.filter(
     (appointment) => !getAppointmentSpan(appointment, servicesById),
   )
 
@@ -91,14 +99,13 @@ export default function DailyTimeline({
           <h2 id="agenda-timeline-title" className="text-lg font-semibold text-slate-800">
             Disponibilidade e agenda horária
           </h2>
-          <p className="text-xs text-slate-500">08:00–17:00 · horários apresentados em Europe/Lisbon</p>
+          <p className="text-xs text-slate-500">08:00–19:00 · horários apresentados em Europe/Lisbon</p>
         </div>
         <ul className="flex flex-wrap gap-3 text-xs text-slate-600" aria-label="Legenda dos estados">
           {[
             ['scheduled', 'Agendado'],
             ['in_progress', 'Em curso'],
             ['completed', 'Concluído'],
-            ['cancelled', 'Cancelado'],
           ].map(([value, label]) => (
             <li key={value} className="inline-flex items-center gap-1.5">
               <span
@@ -129,8 +136,8 @@ export default function DailyTimeline({
             <div className="min-w-[900px]">
               <div className="grid grid-cols-[190px_minmax(0,1fr)] border-b border-slate-200 bg-slate-50 text-xs font-medium text-slate-600">
                 <div className="px-3 py-2">Técnico / comercial</div>
-                <div className="grid grid-cols-9">
-                  {HOUR_LABELS.slice(0, 9).map((label) => (
+                <div className="grid" style={GRID_STYLE}>
+                  {HOUR_COLUMNS.map((label) => (
                     <div key={label} className="border-l border-slate-200 px-1 py-2 text-center">
                       {label}
                     </div>
@@ -144,7 +151,7 @@ export default function DailyTimeline({
                 </div>
               ) : (
                 staffRows.map((person) => {
-                  const personAppointments = sortedAppointments.filter(
+                  const personAppointments = timelineAppointments.filter(
                     (appointment) => appointment.tech_id === person.id,
                   )
                   return (
@@ -157,8 +164,8 @@ export default function DailyTimeline({
                         <span className="text-xs text-slate-500">{staffRoleLabel(person.role)}</span>
                       </div>
                       <div className="relative min-h-16">
-                        <div className="absolute inset-0 grid grid-cols-9" aria-hidden="true">
-                          {HOUR_LABELS.slice(0, 9).map((label) => (
+                        <div className="absolute inset-0 grid" style={GRID_STYLE} aria-hidden="true">
+                          {HOUR_COLUMNS.map((label) => (
                             <span key={label} className="border-l border-slate-100" />
                           ))}
                         </div>
@@ -182,9 +189,10 @@ export default function DailyTimeline({
                                 ? 'border-primary/40 bg-white text-primary'
                                 : 'border-slate-300 bg-slate-100 text-slate-700'
                           return (
-                            <article
+                            <button
+                              type="button"
                               key={appointment.id}
-                              tabIndex={0}
+                              onClick={() => onSelect(appointment.id)}
                               aria-label={appointmentLabel(
                                 appointment,
                                 staffById,
@@ -192,7 +200,7 @@ export default function DailyTimeline({
                                 clientsById,
                                 servicesById,
                               )}
-                              className={`absolute top-2 z-20 min-w-12 overflow-hidden rounded-lg border px-2 py-1 text-xs shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${statusClass}`}
+                              className={`absolute top-2 z-20 min-w-12 overflow-hidden rounded-lg border px-2 py-1 text-left text-xs shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${statusClass}`}
                               style={{
                                 left: `${span.left}%`,
                                 width: `${span.width}%`,
@@ -209,7 +217,7 @@ export default function DailyTimeline({
                               <span className="block truncate">
                                 {pool?.local_address ?? service?.name ?? appointmentStatusLabel(appointment.status)}
                               </span>
-                            </article>
+                            </button>
                           )
                         })}
                       </div>
@@ -226,11 +234,19 @@ export default function DailyTimeline({
             </p>
           )}
 
+          {cancelledCount > 0 && (
+            <p className="mt-3 text-sm text-slate-600">
+              {cancelledCount === 1
+                ? 'Um agendamento cancelado não ocupa a agenda; consulte-o na lista abaixo.'
+                : `${cancelledCount} agendamentos cancelados não ocupam a agenda; consulte-os na lista abaixo.`}
+            </p>
+          )}
+
           {appointmentsWithoutDuration.length > 0 && (
             <p className="mt-3 text-sm text-slate-600">
               {appointmentsWithoutDuration.length === 1
-                ? 'Uma intervenção sem duração disponível não pode ser posicionada na timeline.'
-                : `${appointmentsWithoutDuration.length} intervenções sem duração disponível não podem ser posicionadas na timeline.`}
+                ? 'Uma intervenção fora do horário 08:00–19:00 (ou sem hora) não aparece na timeline; consulte a lista abaixo.'
+                : `${appointmentsWithoutDuration.length} intervenções fora do horário 08:00–19:00 (ou sem hora) não aparecem na timeline; consulte a lista abaixo.`}
             </p>
           )}
 
@@ -244,7 +260,16 @@ export default function DailyTimeline({
                   <p className="font-medium text-slate-800">
                     {appointmentLabel(appointment, staffById, poolsById, clientsById, servicesById)}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">ID: {appointment.id}</p>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-500">ID: {appointment.id}</p>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(appointment.id)}
+                      className="rounded text-xs font-medium text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    >
+                      Ver detalhe
+                    </button>
+                  </div>
                 </li>
               ))}
             </ol>

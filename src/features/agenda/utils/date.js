@@ -103,3 +103,43 @@ export function dateKeyOf(value) {
   const date = toDate(value)
   return date ? dateKeyInLisbon(date.getTime()) : null
 }
+
+const DATE_TIME_FORMAT = new Intl.DateTimeFormat('pt-PT', {
+  timeZone: TIME_ZONE,
+  weekday: 'short',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+/** Data e hora curtas em PT-PT, no fuso de Lisboa (ex.: "qui., 26/11/2026, 14:30"). */
+export function formatDateTime(value) {
+  const date = toDate(value)
+  return date ? DATE_TIME_FORMAT.format(date) : '—'
+}
+
+/** "HH:MM" de um instante, na hora de Lisboa (para preencher o campo de hora ao reagendar). */
+export function timeKeyInLisbon(value) {
+  const minutes = minutesInLisbon(value)
+  if (minutes == null) return ''
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+}
+
+/**
+ * Converte a data ("AAAA-MM-DD") e a hora ("HH:MM") escolhidas no formulário, que são hora de Lisboa,
+ * para o instante exato. Devolve null se algum dos valores for inválido.
+ */
+export function lisbonDateTime(dateKey, timeKey) {
+  const match = /^(\d{2}):(\d{2})$/.exec(timeKey ?? '')
+  if (!match) return null
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  if (hour > 23 || minute > 59) return null
+  try {
+    return zonedDateTimeToDate(dateKey, hour, minute)
+  } catch {
+    return null
+  }
+}
