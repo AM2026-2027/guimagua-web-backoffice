@@ -7,14 +7,6 @@ export const STAFF_ROLE_OPTIONS = [ROLES.TECHNICIAN, ROLES.COMMERCIAL].map((valu
   label: ROLE_LABELS[value],
 }))
 
-export const ROLE_FILTERS = [{ value: 'all', label: 'Todos os perfis' }, ...STAFF_ROLE_OPTIONS]
-
-export const STATUS_FILTERS = [
-  { value: 'all', label: 'Todos' },
-  { value: 'active', label: 'Ativos' },
-  { value: 'inactive', label: 'Inativos' },
-]
-
 export function roleLabel(role) {
   return ROLE_LABELS[role] ?? role ?? '—'
 }
@@ -59,4 +51,13 @@ const DATE_FORMAT = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon'
 export function formatDate(value) {
   const date = typeof value?.toDate === 'function' ? value.toDate() : value ? new Date(value) : null
   return date && !Number.isNaN(date.getTime()) ? DATE_FORMAT.format(date) : '—'
+}
+
+// Filtros dos cartões (substituem os antigos filtros "Perfil" e "Estado").
+export const TEAM_CARD_FILTERS = {
+  technicians: 'técnicos ativos',
+  commercials: 'comerciais ativos',
+  in_service: 'colaboradores em serviço agora',
+  visits_today: 'colaboradores com visitas hoje',
+  inactive: 'contas inativas',
 }
