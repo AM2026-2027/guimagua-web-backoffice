@@ -75,7 +75,7 @@ Atua como Engenheiro Frontend Sénior. Em caso de conflito entre este ficheiro e
    - Nunca pedir para colar chaves, tokens ou passwords no chat; nunca ler nem commitar `.env.local`.
    - Nunca contornar `RequireAuth` ou `RequireRole`.
    - Em `team`, o administrador autenticado não pode alterar o próprio `role` nem desativar a própria conta.
-   - **Contas de técnicos e comerciais:** só no módulo `team`, seguindo o fluxo da D-08 (instância secundária do Auth, password temporária nunca mostrada, email de definição de password). Em mais nenhum sítio se criam contas.
+   - **Contas de técnicos e comerciais:** o backoffice tem uma única conta `admin`, que o `team` não cria nem edita. As contas de técnicos e comerciais criam-se só no módulo `team`, seguindo o fluxo da D-08, com as alterações da D-16: instância secundária do Auth, palavra-passe temporária mostrada uma única vez ao admin e nunca guardada, e `must_change_password: true`. A reposição envia o link para o email da conta. Em mais nenhum sítio se criam contas.
    - **Ficheiros (fotos, PDFs):** só no Firebase Storage (disponível com o plano Blaze, D-14), nos caminhos da D-09; nunca no Google Drive. O Firestore guarda caminhos, não URLs. O `getStorage` entra em `src/config/firebase.js` no primeiro módulo que precisar dele, com a regra de revisão da D-09.
 7. **Identidade visual:**
    - Usar as classes `bg-primary`, `text-primary`, `hover:bg-primary-dark` e `bg-background` em vez de cores hexadecimais soltas: primária `#0B4F6C`, primária escura `#083B51`, fundo `#F4F7F9`, cartões brancos com borda subtil (`border-slate-200`). A fonte de verdade é `src/styles/base.css`.
