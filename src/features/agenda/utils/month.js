@@ -58,20 +58,3 @@ export function formatMonthLabel(monthKey) {
   const { year, month } = monthParts(monthKey)
   return MONTH_LABEL_FORMAT.format(new Date(Date.UTC(year, month - 1, 15, 12)))
 }
-
-export function countAppointmentStatuses(appointments) {
-  const counts = {
-    scheduled: 0,
-    in_progress: 0,
-    completed: 0,
-    cancelled: 0,
-  }
-
-  for (const appointment of appointments) {
-    if (Object.prototype.hasOwnProperty.call(counts, appointment.status)) {
-      counts[appointment.status] += 1
-    }
-  }
-
-  return counts
-}

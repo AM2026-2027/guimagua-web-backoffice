@@ -31,7 +31,8 @@ const CLIENT_SEARCH_LIMIT = 10
 
 /** Erro lançado quando o agendamento já não está `scheduled` (ex.: cancelado noutro separador). */
 export const APPOINTMENT_NOT_SCHEDULED = 'agenda/not-scheduled'
-export const AGENDA_MONTH_PAGE_SIZE = 500
+const AGENDA_RANGE_PAGE_SIZE = 500
+export const AGENDA_RANGE_MAX_RESULTS = 2000
 
 function normalize(snapshot) {
   return { id: snapshot.id, ...snapshot.data() }
@@ -67,7 +68,7 @@ export function subscribeAppointmentsForDay(dateKey, onItems, onError) {
   )
 }
 
-export async function listAgendaAppointmentsMonthPage({ start, end, cursor = null, pageSize }) {
+async function listAgendaAppointmentsRangePage({ start, end, cursor = null, pageSize }) {
   const constraints = [
     where('date', '>=', Timestamp.fromDate(start)),
     where('date', '<', Timestamp.fromDate(end)),
@@ -81,6 +82,38 @@ export async function listAgendaAppointmentsMonthPage({ start, end, cursor = nul
     items: snapshot.docs.map(normalize),
     cursor: snapshot.docs.at(-1) ?? cursor,
   }
+}
+
+export async function listAgendaAppointmentsInRange({ start, end, isCancelled = () => false }) {
+  const items = []
+  let cursor = null
+  let hasMore = true
+
+  while (hasMore && items.length < AGENDA_RANGE_MAX_RESULTS) {
+    const pageSize = Math.min(
+      AGENDA_RANGE_PAGE_SIZE,
+      AGENDA_RANGE_MAX_RESULTS - items.length,
+    )
+    const page = await listAgendaAppointmentsRangePage({ start, end, cursor, pageSize })
+    if (isCancelled()) return { items: [], overflow: false, cancelled: true }
+
+    items.push(...page.items)
+    cursor = page.cursor
+    hasMore = page.items.length === pageSize
+  }
+
+  if (hasMore && items.length === AGENDA_RANGE_MAX_RESULTS) {
+    const overflow = await listAgendaAppointmentsRangePage({
+      start,
+      end,
+      cursor,
+      pageSize: 1,
+    })
+    if (isCancelled()) return { items: [], overflow: false, cancelled: true }
+    if (overflow.items.length > 0) return { items: [], overflow: true, cancelled: false }
+  }
+
+  return { items, overflow: false, cancelled: false }
 }
 
 export async function listAgendaStaff() {

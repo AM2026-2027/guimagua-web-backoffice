@@ -11,7 +11,6 @@ export default function AgendaToolbar({
   statusOptions,
   searchTerm,
   onDateChange,
-  onMonthNavigate,
   onStatusChange,
   onSearchChange,
 }) {
@@ -44,7 +43,6 @@ export default function AgendaToolbar({
           </p>
           <Link
             to={`/agenda?${createMonthSearchParams(dateKey.slice(0, 7))}`}
-            onClick={onMonthNavigate}
             className={`${LINK_BUTTON} mt-2 inline-flex`}
           >
             Voltar à grelha mensal

@@ -12,6 +12,9 @@ import ActiveAppointmentPanel from '../components/ActiveAppointmentPanel'
 import AppointmentDetailModal from '../components/AppointmentDetailModal'
 import AppointmentFormModal from '../components/AppointmentFormModal'
 import DailyTimeline from '../components/DailyTimeline'
+import WeekAgendaList from '../components/WeekAgendaList'
+import WeekGrid from '../components/WeekGrid'
+import WeekToolbar from '../components/WeekToolbar'
 import MonthAgendaList from '../components/MonthAgendaList'
 import MonthGrid from '../components/MonthGrid'
 import MonthLegend from '../components/MonthLegend'
@@ -20,6 +23,7 @@ import { useAppointmentActions } from '../hooks/useAppointmentActions'
 import { useAppointmentDetail } from '../hooks/useAppointmentDetail'
 import { useAppointments } from '../hooks/useAppointments'
 import { useMonthAppointments } from '../hooks/useMonthAppointments'
+import { useWeekAppointments } from '../hooks/useWeekAppointments'
 import { dateKeyInLisbon, dateKeyOf, formatDateTime, shiftDateKey } from '../utils/date'
 import {
   APPOINTMENT_STATUS_OPTIONS,
@@ -29,9 +33,12 @@ import { getMonthGridDays, shiftMonthKey } from '../utils/month'
 import { occupiesStaff } from '../utils/schedule'
 import { sortAppointments } from '../utils/sort'
 import { appointmentMatchesSearch } from '../utils/text'
+import { getWeekStartDateKey } from '../utils/viewParams'
+import { shiftWeekKey } from '../utils/week'
 import {
   createDaySearchParams,
   createMonthSearchParams,
+  createWeekSearchParams,
   parseAgendaViewParams,
 } from '../utils/viewParams'
 
@@ -41,9 +48,8 @@ export default function AgendaPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const actualSearch = searchParams.toString()
   const viewParams = parseAgendaViewParams(searchParams, todayKey)
-  const { view, dateKey, monthKey, normalizedSearch } = viewParams
-  const [lastDayDateKey, setLastDayDateKey] = useState(() => dateKeyInLisbon())
-  const [daySubscriptionStarted, setDaySubscriptionStarted] = useState(false)
+  const { view, dateKey, monthKey, weekKey, normalizedSearch } = viewParams
+  const paramsAreNormalized = actualSearch === normalizedSearch
   const [status, setStatus] = useState('active')
   const [searchTerm, setSearchTerm] = useState('')
   const [monthStatus, setMonthStatus] = useState('not_cancelled')
@@ -51,12 +57,20 @@ export default function AgendaPage() {
   const [now, setNow] = useState(() => new Date())
   const [dialog, setDialog] = useState(null)
   const [notice, setNotice] = useState('')
-  const daySubscriptionDateKey = view === 'day' ? dateKey : lastDayDateKey
-  const dayAgenda = useAppointments(daySubscriptionDateKey, {
-    enabled: view === 'day' || daySubscriptionStarted,
-    loadReferences: view === 'day',
+  const dayAgenda = useAppointments(dateKey, {
+    enabled: view === 'day' && paramsAreNormalized,
+    loadReferences: view === 'day' && paramsAreNormalized,
   })
-  const monthAgenda = useMonthAppointments(monthKey, view === 'month', location.key)
+  const monthAgenda = useMonthAppointments(
+    monthKey,
+    view === 'month' && paramsAreNormalized,
+    location.key,
+  )
+  const weekAgenda = useWeekAppointments(
+    weekKey,
+    view === 'week' && paramsAreNormalized,
+    location.key,
+  )
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -83,6 +97,7 @@ export default function AgendaPage() {
     [dayAgenda.services],
   )
   const actions = useAppointmentActions(servicesById)
+
   const enrichedAppointments = useMemo(
     () =>
       dayAgenda.appointments.map((appointment) => {
@@ -115,8 +130,6 @@ export default function AgendaPage() {
 
   function changeDate(offset) {
     const nextDateKey = offset === 0 ? todayKey : shiftDateKey(dateKey, offset)
-    setLastDayDateKey(nextDateKey)
-    setDaySubscriptionStarted(true)
     setSearchParams(createDaySearchParams(nextDateKey))
   }
 
@@ -126,19 +139,18 @@ export default function AgendaPage() {
   }
 
   function openDay(nextDateKey) {
-    setLastDayDateKey(nextDateKey)
-    setDaySubscriptionStarted(true)
     setSearchParams(createDaySearchParams(nextDateKey))
   }
 
-  function prepareDayNavigation(nextDateKey) {
-    setLastDayDateKey(nextDateKey)
-    setDaySubscriptionStarted(true)
+  function changeWeek(offset) {
+    const nextWeekKey =
+      offset === 0 ? getWeekStartDateKey(todayKey) : shiftWeekKey(weekKey, offset)
+    closeDialog()
+    setSearchParams(createWeekSearchParams(nextWeekKey))
   }
 
-  function prepareMonthNavigation() {
-    setLastDayDateKey(dateKey)
-    setDaySubscriptionStarted(true)
+  function weekAnchorForMonth() {
+    return monthKey === todayKey.slice(0, 7) ? todayKey : `${monthKey}-01`
   }
 
   function printSchedule() {
@@ -231,22 +243,48 @@ export default function AgendaPage() {
   const monthDays = useMemo(() => getMonthGridDays(monthKey), [monthKey])
   const monthError = monthAgenda.error
   const monthLoading = monthAgenda.loading || dayAgenda.metadataLoading
+  const visibleWeekAppointments = useMemo(
+    () =>
+      weekAgenda.appointments.filter(
+        (appointment) =>
+          monthStatus === 'all' ||
+          (monthStatus === 'not_cancelled'
+            ? appointment.status !== 'cancelled'
+            : appointment.status === monthStatus),
+      ),
+    [monthStatus, weekAgenda.appointments],
+  )
+  const weekError = weekAgenda.error || dayAgenda.metadataError
+  const weekLoading = weekAgenda.loading || dayAgenda.metadataLoading
+  const weekTabKey =
+    view === 'month'
+      ? getWeekStartDateKey(weekAnchorForMonth())
+      : view === 'day'
+        ? getWeekStartDateKey(dateKey)
+        : weekKey
 
   return (
     <div className="space-y-5">
       <AgendaHeader
         onPrint={printSchedule}
         onCreate={() => openDialog('create')}
+        onWeekNavigate={closeDialog}
         createDisabled={dayAgenda.metadataLoading}
         view={view}
         dateKey={dateKey}
         monthKey={monthKey}
+        weekKey={weekTabKey}
         todayKey={todayKey}
-        onDayNavigate={prepareDayNavigation}
-        onMonthNavigate={prepareMonthNavigation}
       />
       <Notice message={notice} onClose={clearNotice} />
 
+      <div
+        id="agenda-view-panel"
+        role="tabpanel"
+        aria-labelledby={`agenda-tab-${view}`}
+        tabIndex={0}
+        className="space-y-5 focus:outline-none"
+      >
       {view === 'day' ? (
         <>
           <AgendaToolbar
@@ -256,7 +294,6 @@ export default function AgendaPage() {
             statusOptions={APPOINTMENT_STATUS_OPTIONS}
             searchTerm={searchTerm}
             onDateChange={changeDate}
-            onMonthNavigate={prepareMonthNavigation}
             onStatusChange={setStatus}
             onSearchChange={setSearchTerm}
           />
@@ -302,6 +339,64 @@ export default function AgendaPage() {
                 pool={activeAppointment?.pool}
                 staff={activeAppointment?.staff}
                 service={activeAppointment?.service}
+              />
+            </>
+          )}
+        </>
+      ) : view === 'week' ? (
+        <>
+          <WeekToolbar
+            weekKey={weekKey}
+            currentWeekKey={getWeekStartDateKey(todayKey)}
+            onWeekChange={changeWeek}
+            statusFilter={monthStatus}
+            onStatusFilterChange={setMonthStatus}
+            visibleCount={
+              weekLoading || weekError || weekAgenda.warning
+                ? null
+                : visibleWeekAppointments.length
+            }
+            countMessage={
+              weekLoading ? 'A carregar contagens...' : 'Contagens indisponíveis'
+            }
+          />
+          <MonthLegend />
+          {weekLoading ? (
+            <LoadingSpinner label="A carregar a grelha semanal..." />
+          ) : weekError ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <ErrorAlert message={weekError} />
+              <button
+                type="button"
+                onClick={() => {
+                  dayAgenda.reload()
+                  weekAgenda.reload()
+                }}
+                className={`${SECONDARY_BUTTON} mt-3`}
+              >
+                Tentar novamente
+              </button>
+            </div>
+          ) : weekAgenda.warning ? (
+            <div role="alert" className="rounded-2xl border border-primary/40 bg-background p-5 text-sm text-slate-700">
+              {weekAgenda.warning}
+            </div>
+          ) : (
+            <>
+              <WeekGrid
+                weekKey={weekKey}
+                appointments={visibleWeekAppointments}
+                staff={dayAgenda.staff}
+                staffById={staffById}
+                servicesById={servicesById}
+                todayKey={todayKey}
+                onDaySelect={openDay}
+              />
+              <WeekAgendaList
+                appointments={visibleWeekAppointments}
+                staffById={staffById}
+                servicesById={servicesById}
+                onDaySelect={openDay}
               />
             </>
           )}
@@ -362,8 +457,9 @@ export default function AgendaPage() {
           )}
         </>
       )}
+      </div>
 
-      {dialog?.type === 'create' && (
+      {view !== 'week' && dialog?.type === 'create' && (
         <AppointmentFormModal
           initialDateKey={view === 'day' && dateKey >= todayKey ? dateKey : todayKey}
           todayKey={todayKey}
@@ -376,7 +472,7 @@ export default function AgendaPage() {
           onClose={closeDialog}
         />
       )}
-      {dialog?.type === 'detail' && selectedAppointment && (
+      {view !== 'week' && dialog?.type === 'detail' && selectedAppointment && (
         <AppointmentDetailModal
           appointment={selectedAppointment}
           servicesById={servicesById}
@@ -385,7 +481,7 @@ export default function AgendaPage() {
           onClose={closeDialog}
         />
       )}
-      {dialog?.type === 'reschedule' && selectedAppointment && (
+      {view !== 'week' && dialog?.type === 'reschedule' && selectedAppointment && (
         <AppointmentFormModal
           key={selectedAppointment.id}
           appointment={selectedAppointment}
@@ -399,7 +495,7 @@ export default function AgendaPage() {
           onClose={closeDialog}
         />
       )}
-      {dialog?.type === 'cancel' && selectedAppointment && (
+      {view !== 'week' && dialog?.type === 'cancel' && selectedAppointment && (
         <ConfirmDialog
           title="Cancelar agendamento"
           message={`Cancelar a intervenção de ${formatDateTime(selectedAppointment.date)} (${selectedAppointment.client?.name ?? 'cliente não identificado'})? Os consumíveis reservados voltam ao stock projetado.`}

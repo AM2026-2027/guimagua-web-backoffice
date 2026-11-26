@@ -3,7 +3,7 @@ import { CARD_CLASS } from '../../../shared/components/uiClasses'
 import { formatLongDate, dateKeyOf } from '../utils/date'
 import { MONTH_WEEKDAY_LABELS } from '../utils/labels'
 import { getMonthGridDays } from '../utils/month'
-import { sortMonthAppointments } from '../utils/sort'
+import { sortAgendaAppointments } from '../utils/sort'
 import MonthGridCell from './MonthGridCell'
 
 const KEYBOARD_DAY_OFFSETS = {
@@ -32,7 +32,7 @@ export default function MonthGrid({
     : days.find((day) => day.inMonth)?.dateKey ?? days[0]?.dateKey
 
   const appointmentsByDate = new Map()
-  for (const appointment of sortMonthAppointments(appointments, staffById)) {
+  for (const appointment of sortAgendaAppointments(appointments, staffById)) {
     const dateKey = dateKeyOf(appointment.date)
     if (!dateKey) continue
     const current = appointmentsByDate.get(dateKey) ?? []
