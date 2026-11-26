@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import { getAuth, inMemoryPersistence, initializeAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -25,3 +25,8 @@ const app = initializeApp(firebaseConfig)
 
 export const auth = getAuth(app)
 export const db = getFirestore(app)
+
+// Instância secundária do Auth (D-08): cria as contas de técnicos e comerciais sem terminar a sessão
+// do admin. A persistência em memória garante que a conta criada nunca fica guardada no browser.
+const secondaryApp = initializeApp(firebaseConfig, 'secondary')
+export const secondaryAuth = initializeAuth(secondaryApp, { persistence: inMemoryPersistence })
