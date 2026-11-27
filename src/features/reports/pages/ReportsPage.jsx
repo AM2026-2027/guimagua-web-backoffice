@@ -13,6 +13,13 @@ import ReportsToolbar from '../components/ReportsToolbar'
 import { formatReportDateTime, isValidReportPeriod } from '../utils/dateRange'
 import { reportsToCsv } from '../utils/csv'
 
+const TAB_VALUES = new Set(REPORT_TABS.map((tab) => tab.value))
+
+/**
+ * Relatórios & Histórico (RF-WEB07, US10): intervenções, rotas da equipa e movimentos de stock.
+ * O separador ativo e o filtro de piscina vivem no endereço (`?tab=` e `?pool=`), sem rota nova.
+ * Módulo só de leitura: não grava nada no Firestore.
+ */
 export default function ReportsPage() {
   const reports = useReports()
   const [notice, setNotice] = useState('')

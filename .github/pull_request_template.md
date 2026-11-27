@@ -14,6 +14,7 @@
 1.
 
 ## Definição de feito
+- [ ] O branch **base (destino)** no topo deste PR está definido para `grupo-a` ou `grupo-b` (e não `main`)
 - [ ] Branch `feat/a-*` / `feat/b-*` criado a partir do branch do grupo atualizado com a `main`
 - [ ] Quatro camadas respeitadas; nenhum import de `firebase/*` fora de `src/services/`
 - [ ] Coleções e campos conforme `docs/modelo-dados.md` (campos novos listados acima)
