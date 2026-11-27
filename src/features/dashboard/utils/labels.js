@@ -1,11 +1,4 @@
-// Mapas de rótulos PT-PT para valores guardados em minúsculas snake_case (D-07) e formatação Europe/Lisbon.
-
-export const APPOINTMENT_STATUS_LABELS = {
-  scheduled: 'Agendado',
-  in_progress: 'Em execução',
-  completed: 'Concluído',
-  cancelled: 'Cancelado',
-}
+const LISBON_TIMEZONE = 'Europe/Lisbon'
 
 export const TICKET_STATUS_LABELS = {
   pending: 'Pendente',
@@ -13,168 +6,123 @@ export const TICKET_STATUS_LABELS = {
   responded: 'Respondido',
 }
 
+export const TICKET_STATUS_CLASSES = {
+  pending: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200',
+  in_analysis: 'bg-sky-50 text-sky-800 ring-1 ring-sky-200',
+  responded: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+}
+
 export const TICKET_PRIORITY_LABELS = {
   low: 'Baixa',
   normal: 'Normal',
-  high: 'Urgente',
+  high: 'Alta',
 }
 
-export const STAFF_ROLE_LABELS = {
-  technician: 'Técnico',
-  commercial: 'Comercial',
+export const TICKET_PRIORITY_CLASSES = {
+  low: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+  normal: 'bg-blue-50 text-primary ring-1 ring-blue-200',
+  high: 'bg-red-50 text-red-700 ring-1 ring-red-200',
 }
 
-export const ALERT_FILTER_OPTIONS = [
-  { value: 'all', label: 'Todos' },
-  { value: 'critical', label: 'Críticos' },
-  { value: 'warning', label: 'Atenção' },
-  { value: 'stock', label: 'Stock crítico' },
-]
-
-export function appointmentStatusLabel(value) {
-  return APPOINTMENT_STATUS_LABELS[value] ?? value ?? '—'
+export const TICKET_CATEGORY_LABELS = {
+  breakdown: 'Avaria',
+  quote: 'Orçamento',
+  maintenance: 'Manutenção',
 }
 
-export function ticketStatusLabel(value) {
-  return TICKET_STATUS_LABELS[value] ?? value ?? '—'
+export const APPOINTMENT_STATUS_LABELS = {
+  scheduled: 'Agendado',
+  in_progress: 'Em curso',
+  completed: 'Concluído',
+  cancelled: 'Cancelado',
 }
 
-export function ticketPriorityLabel(value) {
-  return TICKET_PRIORITY_LABELS[value] ?? value ?? 'Normal'
+export const APPOINTMENT_STATUS_CLASSES = {
+  scheduled: 'bg-sky-50 text-sky-800 ring-1 ring-sky-200',
+  in_progress: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200',
+  completed: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  cancelled: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
 }
 
-export function staffRoleLabel(value) {
-  return STAFF_ROLE_LABELS[value] ?? value ?? 'Colaborador'
+export function getEnumLabel(map, value, fallback = '—') {
+  if (typeof value !== 'string' || !value.trim()) return fallback
+  const normalized = value.trim().toLowerCase()
+  return map[normalized] ?? value
 }
 
-const TIME_ZONE = 'Europe/Lisbon'
+export function getEnumClass(map, value, fallback = 'bg-slate-100 text-slate-600 ring-1 ring-slate-200') {
+  if (typeof value !== 'string' || !value.trim()) return fallback
+  return map[value.trim().toLowerCase()] ?? fallback
+}
 
-const DATE_LONG_FORMAT = new Intl.DateTimeFormat('pt-PT', {
-  timeZone: TIME_ZONE,
-  day: '2-digit',
-  month: 'long',
-  year: 'numeric',
-})
-
-const TIME_FORMAT = new Intl.DateTimeFormat('pt-PT', {
-  timeZone: TIME_ZONE,
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-const DATE_TIME_FORMAT = new Intl.DateTimeFormat('pt-PT', {
-  timeZone: TIME_ZONE,
-  dateStyle: 'short',
-  timeStyle: 'short',
-})
-
-const LISBON_PARTS_FORMAT = new Intl.DateTimeFormat('en-CA', {
-  timeZone: TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false,
-})
-
-/** Aceita Timestamp do Firestore, Date ou milissegundos. */
 export function toDate(value) {
   if (!value) return null
-  if (typeof value.toDate === 'function') return value.toDate()
-  const date = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+  if (typeof value.toDate === 'function') {
+    const converted = value.toDate()
+    return Number.isNaN(converted.getTime()) ? null : converted
+  }
+  if (typeof value === 'object' && typeof value.seconds === 'number') {
+    const converted = new Date(value.seconds * 1000)
+    return Number.isNaN(converted.getTime()) ? null : converted
+  }
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-export function formatDateLong(value) {
+export function formatLisbonTime(value) {
   const date = toDate(value)
-  return date ? DATE_LONG_FORMAT.format(date) : '—'
+  if (!date) return '—'
+  return new Intl.DateTimeFormat('pt-PT', {
+    timeZone: LISBON_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
-export function formatTime(value) {
+export function formatLisbonDateTime(value) {
   const date = toDate(value)
-  return date ? TIME_FORMAT.format(date) : '—'
+  if (!date) return '—'
+  return new Intl.DateTimeFormat('pt-PT', {
+    timeZone: LISBON_TIMEZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
-export function formatDateTime(value) {
-  const date = toDate(value)
-  return date ? DATE_TIME_FORMAT.format(date) : '—'
+export function formatLisbonTodayLabel(value = new Date()) {
+  const date = toDate(value) ?? new Date()
+  return new Intl.DateTimeFormat('pt-PT', {
+    timeZone: LISBON_TIMEZONE,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
 }
 
 export function formatRelativeAge(value, nowMs = Date.now()) {
   const date = toDate(value)
-  if (!date) return '—'
-  const diffMin = Math.max(0, Math.round((nowMs - date.getTime()) / 60000))
-  if (diffMin < 1) return 'Agora mesmo'
-  if (diffMin < 60) return `Há ${diffMin} min`
-  const diffHours = Math.floor(diffMin / 60)
-  if (diffHours < 24) {
-    const restMin = diffMin % 60
-    return restMin > 0 ? `Há ${diffHours} h ${restMin} min` : `Há ${diffHours} h`
+  if (!date) return 'data indisponível'
+  const diffMinutes = Math.max(0, Math.round((nowMs - date.getTime()) / 60000))
+  if (diffMinutes < 1) return 'agora mesmo'
+  if (diffMinutes < 60) return `há ${diffMinutes} min`
+  const diffHours = Math.round(diffMinutes / 60)
+  if (diffHours < 24) return `há ${diffHours} h`
+  const diffDays = Math.round(diffHours / 24)
+  return `há ${diffDays} ${diffDays === 1 ? 'dia' : 'dias'}`
+}
+
+export function getDashboardErrorMessage(error, fallback = 'Ocorreu um erro ao comunicar com o servidor.') {
+  const code = error?.code
+  if (code === 'permission-denied') {
+    return 'Sem permissões no Firestore para aceder a todos os dados do painel.'
   }
-  const diffDays = Math.floor(diffHours / 24)
-  return diffDays === 1 ? 'Há 1 dia' : `Há ${diffDays} dias`
-}
-
-const NUMBER_FORMATTERS = new Map()
-
-export function formatDecimal(value, decimals = 1) {
-  if (!Number.isFinite(value)) return '—'
-  let formatter = NUMBER_FORMATTERS.get(decimals)
-  if (!formatter) {
-    formatter = new Intl.NumberFormat('pt-PT', {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    })
-    NUMBER_FORMATTERS.set(decimals, formatter)
+  if (code === 'unavailable' || code === 'network-request-failed') {
+    return 'Sem ligação ao servidor. Verifique a internet e tente novamente.'
   }
-  return formatter.format(value)
-}
-
-export function formatInteger(value) {
-  if (!Number.isFinite(value)) return '—'
-  return new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(value)
-}
-
-export function initialsOf(name = '') {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  const first = parts[0][0]
-  const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
-  return `${first}${last}`.toUpperCase()
-}
-
-function zonedMidnightUtc(year, month, day) {
-  // Estima a meia-noite UTC e ajusta pelo desfasamento real de Europe/Lisbon nessa data (WET/WEST).
-  const guessUtc = Date.UTC(year, month - 1, day, 0, 0, 0)
-  const parts = Object.fromEntries(
-    LISBON_PARTS_FORMAT.formatToParts(new Date(guessUtc))
-      .filter((part) => part.type !== 'literal')
-      .map((part) => [part.type, Number(part.value)]),
-  )
-  const lisbonAsUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour % 24, parts.minute, parts.second)
-  const offsetMs = lisbonAsUtc - guessUtc
-  return new Date(guessUtc - offsetMs)
-}
-
-/**
- * Calcula o início (00:00:00) e o fim exclusivo (00:00:00 do dia seguinte) do dia civil
- * no fuso horário `Europe/Lisbon`, independentemente do fuso do navegador.
- */
-export function getLisbonDayBounds(referenceDate = new Date()) {
-  const parts = Object.fromEntries(
-    LISBON_PARTS_FORMAT.formatToParts(referenceDate)
-      .filter((part) => part.type !== 'literal')
-      .map((part) => [part.type, Number(part.value)]),
-  )
-  const dayKey = `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`
-  const dayStart = zonedMidnightUtc(parts.year, parts.month, parts.day)
-  const nextDayUtc = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + 1))
-  const dayEnd = zonedMidnightUtc(
-    nextDayUtc.getUTCFullYear(),
-    nextDayUtc.getUTCMonth() + 1,
-    nextDayUtc.getUTCDate(),
-  )
-  return { dayKey, dayStart, dayEnd }
+  return fallback
 }
