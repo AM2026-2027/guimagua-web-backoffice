@@ -1,36 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
-  getTicketById,
+  getTicketDetail,
+  listTicketAppointmentsPage,
   updateTicketStatus as updateTicketStatusDocument,
 } from '../../../services/ticketsService'
 import { getTicketsErrorMessage } from '../utils/errors'
 
 const EMPTY_DETAIL = { key: null, ticket: null, error: '' }
 
-export function useTicketDetail(ticketId, initialTicket, onTicketUpdated) {
+export function useTicketDetail(ticketId) {
   const [reloadToken, setReloadToken] = useState(0)
   const [detail, setDetail] = useState(EMPTY_DETAIL)
   const [actionError, setActionError] = useState('')
+  const [appointmentsError, setAppointmentsError] = useState('')
+  const [loadingMoreAppointments, setLoadingMoreAppointments] = useState(false)
   const key = `${ticketId ?? ''}:${reloadToken}`
-  const initialTicketRef = useRef(initialTicket)
-
-  useEffect(() => {
-    initialTicketRef.current = initialTicket
-  }, [initialTicket])
 
   useEffect(() => {
     if (!ticketId) return undefined
 
     let ignore = false
     async function load() {
-      const cachedTicket = initialTicketRef.current
-      if (cachedTicket?.id === ticketId) {
-        setDetail({ key, ticket: cachedTicket, error: '' })
-        return
-      }
-
       try {
-        const ticket = await getTicketById(ticketId)
+        const ticket = await getTicketDetail(ticketId)
         if (!ignore) {
           setDetail({
             key,
@@ -56,15 +48,51 @@ export function useTicketDetail(ticketId, initialTicket, onTicketUpdated) {
     }
   }, [ticketId, key])
 
-  const reload = useCallback(() => setReloadToken((token) => token + 1), [])
+  const reload = useCallback(() => {
+    setActionError('')
+    setAppointmentsError('')
+    setReloadToken((token) => token + 1)
+  }, [])
+
+  async function loadMoreAppointments() {
+    const ticket = detail.ticket
+    if (!ticket?.pool_id || !ticket.appointmentsHasMore || loadingMoreAppointments) return false
+
+    setLoadingMoreAppointments(true)
+    setAppointmentsError('')
+    try {
+      const page = await listTicketAppointmentsPage(ticket.pool_id, ticket.appointmentsCursor)
+      setDetail((previous) => ({
+        ...previous,
+        ticket: {
+          ...previous.ticket,
+          appointments: [...previous.ticket.appointments, ...page.items],
+          appointmentsCursor: page.cursor,
+          appointmentsHasMore: page.hasMore,
+        },
+      }))
+      return true
+    } catch (error) {
+      console.error(error)
+      setAppointmentsError(
+        getTicketsErrorMessage(error, 'Não foi possível carregar mais intervenções.'),
+      )
+      return false
+    } finally {
+      setLoadingMoreAppointments(false)
+    }
+  }
 
   async function updateStatus(status, responseMessage = '') {
     setActionError('')
     try {
       const updated = await updateTicketStatusDocument(ticketId, status, responseMessage)
       if (!updated) throw new Error('Pedido não encontrado.')
-      setDetail({ key, ticket: updated, error: '' })
-      onTicketUpdated?.(updated)
+      setDetail((previous) => ({
+        ...previous,
+        ticket: { ...previous.ticket, ...updated },
+        error: '',
+      }))
       return true
     } catch (error) {
       console.error(error)
@@ -82,6 +110,9 @@ export function useTicketDetail(ticketId, initialTicket, onTicketUpdated) {
     reload,
     actionError,
     clearActionError: () => setActionError(''),
+    appointmentsError,
+    loadingMoreAppointments,
+    loadMoreAppointments,
     updateStatus,
   }
 }

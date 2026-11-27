@@ -49,6 +49,16 @@ const DATE_TIME_FORMAT = new Intl.DateTimeFormat('pt-PT', {
   timeStyle: 'short',
 })
 
+const DATE_FORMAT = new Intl.DateTimeFormat('pt-PT', {
+  timeZone: 'Europe/Lisbon',
+  dateStyle: 'medium',
+})
+
+export function formatTicketDate(value) {
+  const date = toDate(value)
+  return date ? DATE_FORMAT.format(date) : '—'
+}
+
 export function formatTicketDateTime(value) {
   const date = toDate(value)
   return date ? DATE_TIME_FORMAT.format(date) : '—'

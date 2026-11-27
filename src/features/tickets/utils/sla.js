@@ -34,6 +34,21 @@ export function getSlaStatus(createdAt, now = Date.now()) {
   return 'regular'
 }
 
+export function getSlaRemaining(createdAt, now = Date.now()) {
+  const created = toDate(createdAt)
+  return created ? created.getTime() + SLA_TOTAL_HOURS * HOUR_MS - now : null
+}
+
+export function formatSlaCountdown(remainingMs) {
+  if (!Number.isFinite(remainingMs)) return 'Prazo indisponível'
+  if (remainingMs <= 0) return 'Prazo ultrapassado'
+
+  const totalMinutes = Math.ceil(remainingMs / (60 * 1000))
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return `${hours} h ${minutes.toString().padStart(2, '0')} min`
+}
+
 export function formatTicketAge(createdAt, now = Date.now()) {
   const created = toDate(createdAt)
   if (!created) return 'Data indisponível'

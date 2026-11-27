@@ -9,10 +9,10 @@ import {
   limit,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   startAfter,
   Timestamp,
-  updateDoc,
   where,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
@@ -20,12 +20,17 @@ import { db } from '../config/firebase'
 const TICKETS = 'tickets'
 const CLIENTS = 'clients'
 const POOLS = 'pools'
+const APPOINTMENTS = 'appointments'
+const POOL_READINGS = 'pool_readings'
+const SETTINGS = 'settings'
+const ALERT_THRESHOLDS = 'alert_thresholds'
 const OPEN_STATUSES = ['pending', 'in_analysis']
 const TICKET_CATEGORIES = ['quote', 'breakdown', 'maintenance']
 const MAX_IN_VALUES = 30
 
 export const TICKETS_PAGE_SIZE = 20
 export const CLIENTS_PAGE_SIZE = 20
+export const TICKET_APPOINTMENTS_PAGE_SIZE = 5
 
 function normalize(snapshot) {
   return { id: snapshot.id, ...snapshot.data() }
@@ -118,6 +123,81 @@ export async function getTicketById(ticketId) {
   return ticket
 }
 
+async function getLatestPoolReading(poolId) {
+  const snapshot = await getDocs(
+    query(
+      collection(db, POOL_READINGS),
+      where('pool_id', '==', poolId),
+      orderBy('timestamp', 'desc'),
+      limit(1),
+    ),
+  )
+
+  return snapshot.empty ? null : normalize(snapshot.docs[0])
+}
+
+async function getAlertThresholds() {
+  const snapshot = await getDoc(doc(db, SETTINGS, ALERT_THRESHOLDS))
+  return snapshot.exists() ? normalize(snapshot) : null
+}
+
+async function countActivePools(clientId) {
+  if (!clientId) return 0
+  const result = await getCountFromServer(
+    query(
+      collection(db, POOLS),
+      where('client_id', '==', clientId),
+      where('is_active', '==', true),
+    ),
+  )
+  return result.data().count
+}
+
+export async function listTicketAppointmentsPage(poolId, cursor = null) {
+  if (!poolId) return { items: [], cursor: null, hasMore: false }
+
+  const constraints = [
+    where('pool_id', '==', poolId),
+    where('status', '==', 'completed'),
+    orderBy('date', 'desc'),
+  ]
+  if (cursor) constraints.push(startAfter(cursor))
+  constraints.push(limit(TICKET_APPOINTMENTS_PAGE_SIZE))
+
+  const snapshot = await getDocs(query(collection(db, APPOINTMENTS), ...constraints))
+  const documents = snapshot.docs
+  return {
+    items: documents.map(normalize),
+    cursor: documents.length > 0 ? documents[documents.length - 1] : cursor,
+    hasMore: documents.length === TICKET_APPOINTMENTS_PAGE_SIZE,
+  }
+}
+
+export async function getTicketDetail(ticketId) {
+  const snapshot = await getDoc(doc(db, TICKETS, ticketId))
+  if (!snapshot.exists()) return null
+
+  const sourceTicket = normalize(snapshot)
+  const [tickets, reading, alertThresholds, appointmentsPage, activePoolCount] = await Promise.all([
+    attachReferences([sourceTicket]),
+    sourceTicket.pool_id ? getLatestPoolReading(sourceTicket.pool_id) : null,
+    getAlertThresholds(),
+    listTicketAppointmentsPage(sourceTicket.pool_id),
+    countActivePools(sourceTicket.client_id),
+  ])
+  const [ticket] = tickets
+
+  return {
+    ...ticket,
+    poolReading: reading,
+    alertThresholds,
+    appointments: appointmentsPage.items,
+    appointmentsCursor: appointmentsPage.cursor,
+    appointmentsHasMore: appointmentsPage.hasMore,
+    activePoolCount,
+  }
+}
+
 async function countQueue(constraints = []) {
   const result = await getCountFromServer(query(collection(db, TICKETS), ...constraints))
   return result.data().count
@@ -205,6 +285,7 @@ export async function updateTicketStatus(ticketId, status, responseMessage = '')
     throw new Error('Estado de ticket inválido.')
   }
 
+  const expectedStatus = status === 'in_analysis' ? 'pending' : 'in_analysis'
   const update = { status, updated_at: serverTimestamp() }
   if (status === 'responded') {
     const message = responseMessage.trim()
@@ -213,6 +294,23 @@ export async function updateTicketStatus(ticketId, status, responseMessage = '')
     update.responded_at = serverTimestamp()
   }
 
-  await updateDoc(doc(db, TICKETS, ticketId), update)
+  const ticketRef = doc(db, TICKETS, ticketId)
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(ticketRef)
+    if (!snapshot.exists()) {
+      const error = new Error('Pedido não encontrado.')
+      error.code = 'ticket/not-found'
+      throw error
+    }
+
+    if (snapshot.data().status !== expectedStatus) {
+      const error = new Error('O estado do pedido foi alterado noutra sessão.')
+      error.code = 'ticket/invalid-transition'
+      throw error
+    }
+
+    transaction.update(ticketRef, update)
+  })
+
   return getTicketById(ticketId)
 }
