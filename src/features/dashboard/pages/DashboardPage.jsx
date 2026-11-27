@@ -3,6 +3,8 @@ import ErrorAlert from '../../../shared/components/ErrorAlert'
 import LoadingSpinner from '../../../shared/components/LoadingSpinner'
 import Notice from '../../../shared/components/Notice'
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '../../../shared/components/uiClasses'
+import NewAppointmentDialog from '../../agenda/components/NewAppointmentDialog'
+import { formatDateTime } from '../../agenda/utils/date'
 import { useAuth } from '../../auth/hooks/useAuth'
 import KpiCards from '../components/KpiCards'
 import LowStockCard from '../components/LowStockCard'
@@ -30,6 +32,7 @@ export default function DashboardPage() {
 
   const [alertFilter, setAlertFilter] = useState('alerts')
   const [thresholdsModalOpen, setThresholdsModalOpen] = useState(false)
+  const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const clearNotice = useCallback(() => setNotice(''), [])
 
@@ -86,6 +89,11 @@ export default function DashboardPage() {
     }
   }
 
+  function handleAppointmentCreated(payload) {
+    setAppointmentDialogOpen(false)
+    setNotice(`Agendamento criado para ${formatDateTime(payload.date)}. Consulte-o na agenda.`)
+  }
+
   return (
     <div className="mx-auto max-w-[1500px] space-y-5 pb-8">
       <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -110,6 +118,13 @@ export default function DashboardPage() {
             className={SECONDARY_BUTTON}
           >
             Configurar limiares
+          </button>
+          <button
+            type="button"
+            onClick={() => setAppointmentDialogOpen(true)}
+            className={SECONDARY_BUTTON}
+          >
+            Agendar intervenção
           </button>
           <button
             type="button"
@@ -185,6 +200,13 @@ export default function DashboardPage() {
           serverError={actionError}
           onClose={closeThresholdsModal}
           onSave={handleSaveThresholds}
+        />
+      )}
+
+      {appointmentDialogOpen && (
+        <NewAppointmentDialog
+          onCreated={handleAppointmentCreated}
+          onClose={() => setAppointmentDialogOpen(false)}
         />
       )}
     </div>
