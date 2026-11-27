@@ -262,6 +262,10 @@ export default function AgendaPage() {
       : view === 'day'
         ? getWeekStartDateKey(dateKey)
         : weekKey
+  // Data inicial do novo agendamento: o dia aberto (vista dia) ou o início da semana aberta (vista
+  // semana), desde que não seja no passado; caso contrário, hoje.
+  const viewedDateKey = view === 'day' ? dateKey : view === 'week' ? weekKey : null
+  const defaultCreateDateKey = viewedDateKey && viewedDateKey >= todayKey ? viewedDateKey : todayKey
 
   return (
     <div className="space-y-5">
@@ -313,7 +317,6 @@ export default function AgendaPage() {
               <AgendaStats
                 appointments={dayAgenda.appointments}
                 staffById={staffById}
-                servicesById={servicesById}
               />
               <div className="print:hidden">
                 <button type="button" onClick={dayAgenda.reload} className={SECONDARY_BUTTON}>
@@ -459,9 +462,9 @@ export default function AgendaPage() {
       )}
       </div>
 
-      {view !== 'week' && dialog?.type === 'create' && (
+      {dialog?.type === 'create' && (
         <AppointmentFormModal
-          initialDateKey={view === 'day' && dateKey >= todayKey ? dateKey : todayKey}
+          initialDateKey={defaultCreateDateKey}
           todayKey={todayKey}
           staff={dayAgenda.staff}
           services={dayAgenda.services}

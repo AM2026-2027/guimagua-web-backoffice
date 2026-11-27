@@ -47,8 +47,8 @@ function appointmentLabel(appointment, staffById, poolsById, clientsById, servic
     time == null
       ? 'Hora desconhecida'
       : `${String(Math.floor(time / 60)).padStart(2, '0')}:${String(time % 60).padStart(2, '0')}`
+  // O ID técnico do documento não é mostrado nem lido pelo leitor de ecrã: não ajuda o gestor.
   return [
-    `ID ${appointment.id}`,
     timeLabel,
     staff?.name ?? 'Colaborador não identificado',
     client?.name ?? 'Cliente não identificado',
@@ -260,8 +260,7 @@ export default function DailyTimeline({
                   <p className="font-medium text-slate-800">
                     {appointmentLabel(appointment, staffById, poolsById, clientsById, servicesById)}
                   </p>
-                  <div className="mt-1 flex items-center justify-between gap-2">
-                    <p className="text-xs text-slate-500">ID: {appointment.id}</p>
+                  <div className="mt-1 flex justify-end">
                     <button
                       type="button"
                       onClick={() => onSelect(appointment.id)}

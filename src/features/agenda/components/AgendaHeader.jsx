@@ -55,11 +55,10 @@ export default function AgendaHeader({
             Imprimir escala
           </button>
         )}
-        {view !== 'week' && (
-          <button type="button" onClick={onCreate} disabled={createDisabled} className={PRIMARY_BUTTON}>
-            <span aria-hidden="true">+</span> Agendar intervenção
-          </button>
-        )}
+        {/* O agendamento está disponível nas três vistas (dia, semana e mês). */}
+        <button type="button" onClick={onCreate} disabled={createDisabled} className={PRIMARY_BUTTON}>
+          <span aria-hidden="true">+</span> Agendar intervenção
+        </button>
       </div>
     </header>
   )
