@@ -13,6 +13,7 @@ export default function DashboardHeader({
   monitoredPoolsCount,
   lastSyncedAt,
   onOpenThresholds,
+  onCreateAppointment,
 }) {
   return (
     <header className="space-y-4">
@@ -35,9 +36,9 @@ export default function DashboardHeader({
           <Link to="/tickets" className={SECONDARY_BUTTON}>
             Triagem de pedidos
           </Link>
-          <Link to="/agenda" className={PRIMARY_BUTTON}>
-            + Nova intervenção
-          </Link>
+          <button type="button" onClick={onCreateAppointment} className={PRIMARY_BUTTON}>
+            <span aria-hidden="true">+</span> Agendar intervenção
+          </button>
         </div>
       </div>
 

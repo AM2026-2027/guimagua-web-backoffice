@@ -3,6 +3,8 @@ import ErrorAlert from '../../../shared/components/ErrorAlert'
 import LoadingSpinner from '../../../shared/components/LoadingSpinner'
 import Notice from '../../../shared/components/Notice'
 import { SECONDARY_BUTTON } from '../../../shared/components/uiClasses'
+import NewAppointmentDialog from '../../agenda/components/NewAppointmentDialog'
+import { formatDateTime } from '../../agenda/utils/date'
 import { useAuth } from '../../auth/hooks/useAuth'
 import AlertThresholdsModal from '../components/AlertThresholdsModal'
 import DailySchedulePanel from '../components/DailySchedulePanel'
@@ -21,6 +23,7 @@ export default function DashboardPage() {
   const dashboard = useDashboard({ adminUid: user?.uid ?? null })
   const [alertFilter, setAlertFilter] = useState('all')
   const [thresholdsModalOpen, setThresholdsModalOpen] = useState(false)
+  const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const clearNotice = useCallback(() => setNotice(''), [])
 
@@ -38,6 +41,12 @@ export default function DashboardPage() {
     return ok
   }
 
+  // O agendamento criado aqui aparece sozinho na "Escala diária" se for para hoje (subscrição do dia).
+  function handleAppointmentCreated(payload) {
+    setAppointmentDialogOpen(false)
+    setNotice(`Agendamento criado para ${formatDateTime(payload.date)}. Consulte-o na agenda.`)
+  }
+
   const monitoredPoolsCount = dashboard.fleetStability.total
   const activePoolsCount = dashboard.counts?.activePools
 
@@ -50,6 +59,7 @@ export default function DashboardPage() {
         monitoredPoolsCount={monitoredPoolsCount}
         lastSyncedAt={dashboard.lastSyncedAt}
         onOpenThresholds={openThresholdsModal}
+        onCreateAppointment={() => setAppointmentDialogOpen(true)}
       />
 
       <Notice message={notice} onClose={clearNotice} />
@@ -107,6 +117,13 @@ export default function DashboardPage() {
           onDismissError={dashboard.clearActionError}
           onSubmit={handleSaveThresholds}
           onClose={() => setThresholdsModalOpen(false)}
+        />
+      )}
+
+      {appointmentDialogOpen && (
+        <NewAppointmentDialog
+          onCreated={handleAppointmentCreated}
+          onClose={() => setAppointmentDialogOpen(false)}
         />
       )}
     </div>
