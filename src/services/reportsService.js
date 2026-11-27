@@ -1,115 +1,173 @@
 import {
-  Timestamp,
   collection,
   documentId,
+  getCountFromServer,
   getDocs,
   limit,
   orderBy,
   query,
   startAfter,
+  Timestamp,
   where,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 
-// Módulo de relatórios: só leitura de coleções de outros módulos (AGENTS.md, secção 3).
 const APPOINTMENTS = 'appointments'
+const CLIENTS = 'clients'
+const POOLS = 'pools'
 const POOL_READINGS = 'pool_readings'
-const STOCK_MOVEMENTS = 'stock_movements'
-const USERS = 'users'
 const SERVICES = 'services'
-
-export const INTERVENTIONS_PAGE_SIZE = 20
-export const MOVEMENTS_PAGE_SIZE = 25
-// O operador `in` do Firestore aceita no máximo 30 valores.
+const USERS = 'users'
 const IN_QUERY_MAX = 30
 
 function normalize(snapshot) {
   return { id: snapshot.id, ...snapshot.data() }
 }
 
-function pageResult(snapshot, pageSize, cursor) {
-  const docs = snapshot.docs
-  return {
-    items: docs.map(normalize),
-    cursor: docs.length > 0 ? docs[docs.length - 1] : cursor,
-    hasMore: docs.length === pageSize,
-  }
+function uniqueIds(items, field) {
+  return [...new Set(items.map((item) => item[field]).filter(Boolean))]
 }
 
-/** Técnicos e comerciais (lista pequena, lida uma vez) para os filtros e para mostrar nomes. */
-export async function listStaff() {
-  const snapshot = await getDocs(query(collection(db, USERS), where('role', 'in', ['technician', 'commercial'])))
-  return snapshot.docs.map(normalize)
-}
-
-/** Catálogo de serviços (lista pequena, lida uma vez). */
-export async function listServices() {
-  const snapshot = await getDocs(collection(db, SERVICES))
-  return snapshot.docs.map(normalize)
-}
-
-/** Documentos de uma coleção pelo id, em lotes de 30 (clientes, piscinas, consumíveis de uma página). */
-export async function getDocsByIds(collectionName, ids) {
-  const unique = [...new Set(ids.filter(Boolean))]
-  if (unique.length === 0) return []
+function chunksOf(values, size = IN_QUERY_MAX) {
   const chunks = []
-  for (let i = 0; i < unique.length; i += IN_QUERY_MAX) chunks.push(unique.slice(i, i + IN_QUERY_MAX))
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size))
+  }
+  return chunks
+}
+
+function timestampMillis(value) {
+  if (!value) return 0
+  if (typeof value.toMillis === 'function') return value.toMillis()
+  if (typeof value.toDate === 'function') return value.toDate().getTime()
+  return new Date(value).getTime() || 0
+}
+
+function latestReadingsByAppointment(readings) {
+  const latest = new Map()
+  for (const reading of readings) {
+    const current = latest.get(reading.appointment_id)
+    if (!current || timestampMillis(reading.timestamp) > timestampMillis(current.timestamp)) {
+      latest.set(reading.appointment_id, reading)
+    }
+  }
+  return latest
+}
+
+function periodConstraints(period, field) {
+  return [
+    where(field, '>=', Timestamp.fromDate(period.start)),
+    where(field, '<', Timestamp.fromDate(period.endExclusive)),
+  ]
+}
+
+async function getDocumentsByIds(collectionName, ids) {
+  if (ids.length === 0) return []
   const snapshots = await Promise.all(
-    chunks.map((chunk) => getDocs(query(collection(db, collectionName), where(documentId(), 'in', chunk)))),
+    chunksOf(ids).map((chunk) =>
+      getDocs(query(collection(db, collectionName), where(documentId(), 'in', chunk))),
+    ),
   )
   return snapshots.flatMap((snapshot) => snapshot.docs.map(normalize))
 }
 
-/**
- * Página do histórico de intervenções, da mais recente para a mais antiga (paginação por cursor, RNF-WEB02).
- * Filtros no servidor: estados (`statuses`), período em ms [startMs, endMs), técnico e piscina.
- * Exige índices compostos (ex.: status + date; status + tech_id + date), criados a partir do link do erro.
- */
-export async function listInterventionsPage({ statuses, startMs, endMs, techId, poolId, cursor = null }) {
-  const constraints = [statuses.length === 1 ? where('status', '==', statuses[0]) : where('status', 'in', statuses)]
-  if (techId) constraints.push(where('tech_id', '==', techId))
-  if (poolId) constraints.push(where('pool_id', '==', poolId))
-  if (startMs != null) constraints.push(where('date', '>=', Timestamp.fromMillis(startMs)))
-  if (endMs != null) constraints.push(where('date', '<', Timestamp.fromMillis(endMs)))
+export async function getReportLookups() {
+  const [servicesSnapshot, usersSnapshot] = await Promise.all([
+    getDocs(collection(db, SERVICES)),
+    getDocs(query(collection(db, USERS), where('role', 'in', ['technician', 'commercial']))),
+  ])
+  return {
+    services: servicesSnapshot.docs.map(normalize),
+    staff: usersSnapshot.docs.map(normalize),
+  }
+}
+
+export async function listReportsPage({
+  period,
+  technicianId = 'all',
+  serviceIds = null,
+  pageSize = 7,
+  cursor = null,
+}) {
+  if (serviceIds && serviceIds.length === 0) {
+    return { items: [], cursor, hasMore: false }
+  }
+  if (serviceIds && serviceIds.length > IN_QUERY_MAX) {
+    throw new Error('O filtro de tipo inclui demasiados serviços para uma consulta Firestore.')
+  }
+
+  const constraints = [
+    where('status', '==', 'completed'),
+    ...periodConstraints(period, 'date'),
+  ]
+  if (technicianId !== 'all') constraints.push(where('tech_id', '==', technicianId))
+  if (serviceIds) constraints.push(where('service_id', 'in', serviceIds))
   constraints.push(orderBy('date', 'desc'))
   if (cursor) constraints.push(startAfter(cursor))
-  constraints.push(limit(INTERVENTIONS_PAGE_SIZE))
+  constraints.push(limit(pageSize))
+
   const snapshot = await getDocs(query(collection(db, APPOINTMENTS), ...constraints))
-  return pageResult(snapshot, INTERVENTIONS_PAGE_SIZE, cursor)
+  const appointments = snapshot.docs.map(normalize)
+  const clientIds = uniqueIds(appointments, 'client_id')
+  const poolIds = uniqueIds(appointments, 'pool_id')
+  const appointmentIds = appointments.map((appointment) => appointment.id)
+
+  const [clients, pools, readings] = await Promise.all([
+    getDocumentsByIds(CLIENTS, clientIds),
+    getDocumentsByIds(POOLS, poolIds),
+    appointmentIds.length > 0
+      ? Promise.all(
+          chunksOf(appointmentIds).map((chunk) =>
+            getDocs(query(collection(db, POOL_READINGS), where('appointment_id', 'in', chunk))),
+          ),
+        ).then((snapshots) => snapshots.flatMap((result) => result.docs.map(normalize)))
+      : Promise.resolve([]),
+  ])
+
+  const clientsById = new Map(clients.map((client) => [client.id, client]))
+  const poolsById = new Map(pools.map((pool) => [pool.id, pool]))
+  const latestReadings = latestReadingsByAppointment(readings)
+  const nextCursor = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : cursor
+
+  return {
+    items: appointments.map((appointment) => ({
+      ...appointment,
+      client: clientsById.get(appointment.client_id) ?? null,
+      pool: poolsById.get(appointment.pool_id) ?? null,
+      latestReading: latestReadings.get(appointment.id) ?? null,
+    })),
+    cursor: nextCursor,
+    hasMore: snapshot.docs.length === pageSize,
+  }
 }
 
-/** Leituras físico-químicas registadas numa intervenção (só quando se abre o detalhe). */
-export async function listReadingsByAppointment(appointmentId) {
-  const snapshot = await getDocs(query(collection(db, POOL_READINGS), where('appointment_id', '==', appointmentId)))
-  return snapshot.docs.map(normalize)
-}
+export async function countReports(period, { technicianId = 'all', serviceIds = null } = {}) {
+  if (serviceIds && serviceIds.length === 0) return { completed: 0, pdfAvailable: 0 }
+  if (serviceIds && serviceIds.length > IN_QUERY_MAX) {
+    throw new Error('O filtro de tipo inclui demasiados serviços para uma consulta Firestore.')
+  }
 
-/** Rota de um técnico num dia: agendamentos no intervalo [startMs, endMs), por ordem de hora. */
-export async function listTechRoute(techId, startMs, endMs) {
-  const snapshot = await getDocs(
-    query(
-      collection(db, APPOINTMENTS),
-      where('tech_id', '==', techId),
-      where('date', '>=', Timestamp.fromMillis(startMs)),
-      where('date', '<', Timestamp.fromMillis(endMs)),
-      orderBy('date', 'asc'),
+  const constraints = [
+    where('status', '==', 'completed'),
+    ...periodConstraints(period, 'date'),
+  ]
+  if (technicianId !== 'all') constraints.push(where('tech_id', '==', technicianId))
+  if (serviceIds) constraints.push(where('service_id', 'in', serviceIds))
+  const [completed, pdfAvailable] = await Promise.all([
+    getCountFromServer(query(collection(db, APPOINTMENTS), ...constraints)),
+    getCountFromServer(
+      query(collection(db, APPOINTMENTS), ...constraints, where('report_pdf_path', '!=', null)),
     ),
-  )
-  return snapshot.docs.map(normalize)
+  ])
+  return {
+    completed: completed.data().count,
+    pdfAvailable: pdfAvailable.data().count,
+  }
 }
 
-/**
- * Página do registo de movimentos de stock (do inventário), do mais recente para o mais antigo.
- * Filtros no servidor: tipo ('in' | 'out') e período em ms. O filtro por tipo exige o índice type + created_at.
- */
-export async function listStockMovementsPage({ type, startMs, endMs, cursor = null }) {
-  const constraints = []
-  if (type) constraints.push(where('type', '==', type))
-  if (startMs != null) constraints.push(where('created_at', '>=', Timestamp.fromMillis(startMs)))
-  if (endMs != null) constraints.push(where('created_at', '<', Timestamp.fromMillis(endMs)))
-  constraints.push(orderBy('created_at', 'desc'))
-  if (cursor) constraints.push(startAfter(cursor))
-  constraints.push(limit(MOVEMENTS_PAGE_SIZE))
-  const snapshot = await getDocs(query(collection(db, STOCK_MOVEMENTS), ...constraints))
-  return pageResult(snapshot, MOVEMENTS_PAGE_SIZE, cursor)
+export async function countPoolReadings(period) {
+  const snapshot = await getCountFromServer(
+    query(collection(db, POOL_READINGS), ...periodConstraints(period, 'timestamp')),
+  )
+  return snapshot.data().count
 }
