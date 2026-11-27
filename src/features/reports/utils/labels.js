@@ -1,51 +1,38 @@
-// Rótulos PT-PT para os valores guardados no Firestore em minúsculas snake_case (D-07).
-
-export const REPORT_TABS = [
-  { value: 'interventions', label: 'Intervenções' },
-  { value: 'routes', label: 'Rotas da equipa' },
-  { value: 'stock', label: 'Movimentos de stock' },
+export const REPORT_TYPE_OPTIONS = [
+  { value: 'maintenance', label: 'Manutenção' },
+  { value: 'repair', label: 'Reparação' },
+  { value: 'commercial_survey', label: 'Vistoria comercial' },
 ]
 
-export const APPOINTMENT_STATUS = {
-  scheduled: { label: 'Agendado', className: 'bg-sky-50 text-primary ring-sky-200' },
-  in_progress: { label: 'Em curso', className: 'bg-amber-50 text-amber-800 ring-amber-200' },
-  completed: { label: 'Concluído', className: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
-  cancelled: { label: 'Cancelado', className: 'bg-slate-100 text-slate-600 ring-slate-200' },
+export const APPOINTMENT_STATUS_LABELS = {
+  scheduled: 'Agendado',
+  in_progress: 'Em curso',
+  completed: 'Concluído',
+  cancelled: 'Cancelado',
 }
 
-export function appointmentStatusLabel(status) {
-  return APPOINTMENT_STATUS[status]?.label ?? status ?? '—'
+const TYPE_LABELS = Object.fromEntries(REPORT_TYPE_OPTIONS.map((option) => [option.value, option.label]))
+const POOL_TREATMENT_LABELS = { chlorine: 'Cloro', salt: 'Sal', other: 'Outro' }
+
+export function reportTypeLabel(value) {
+  return value ? TYPE_LABELS[value] ?? value : '—'
 }
 
-export const MOVEMENT_TYPES = [
-  { value: '', label: 'Entradas e saídas' },
-  { value: 'in', label: 'Só entradas' },
-  { value: 'out', label: 'Só saídas' },
-]
-
-export function movementTypeLabel(type) {
-  return type === 'in' ? 'Entrada' : type === 'out' ? 'Saída' : type ?? '—'
+export function poolTreatmentLabel(value) {
+  return value ? POOL_TREATMENT_LABELS[value] ?? value : ''
 }
 
-const MOVEMENT_SOURCES = {
-  initial_stock: 'Stock inicial',
-  manual_adjustment: 'Ajuste no backoffice',
-  appointment: 'Intervenção',
+export function appointmentStatusLabel(value) {
+  return value ? APPOINTMENT_STATUS_LABELS[value] ?? value : '—'
 }
 
-export function movementSourceLabel(source) {
-  return MOVEMENT_SOURCES[source] ?? source ?? '—'
+export function technicianInitials(name = '') {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  return `${parts[0][0]}${parts.length > 1 ? parts[parts.length - 1][0] : ''}`.toUpperCase()
 }
 
-const DECIMAL = new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 2 })
-
-export function formatNumber(value, unit) {
-  const number = Number(value)
-  if (value === null || value === undefined || !Number.isFinite(number)) return '—'
-  return `${DECIMAL.format(number)}${unit ? ` ${unit}` : ''}`
-}
-
-/** Minúsculas e sem acentos, para a pesquisa local nas páginas carregadas. */
-export function normalizeText(value = '') {
-  return String(value ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+export function formatReading(value, maximumFractionDigits = 1) {
+  if (!Number.isFinite(value)) return '—'
+  return new Intl.NumberFormat('pt-PT', { maximumFractionDigits }).format(value)
 }

@@ -1,11 +1,12 @@
-// Mensagens PT-PT para os erros do Firestore (o código vem em `error.code`).
-const MESSAGES = {
-  'permission-denied': 'Sem permissões para esta consulta. Confirme as regras do Firestore para o administrador.',
-  'failed-precondition':
-    'Falta um índice no Firestore para esta combinação de filtros. Crie-o a partir do link que aparece na consola do browser.',
-  unavailable: 'Sem ligação ao servidor. Verifique a internet e tente novamente.',
-}
-
-export function getReportsErrorMessage(error, fallback = 'Ocorreu um erro inesperado. Tente novamente.') {
-  return MESSAGES[error?.code] ?? fallback
+export function getReportsErrorMessage(error, fallback) {
+  switch (error?.code) {
+    case 'permission-denied':
+      return 'Não tem autorização para consultar estes relatórios.'
+    case 'failed-precondition':
+      return 'A consulta requer um índice do Firestore. Consulte os detalhes do erro na consola.'
+    case 'unavailable':
+      return 'O Firestore está temporariamente indisponível. Tente novamente.'
+    default:
+      return fallback
+  }
 }
